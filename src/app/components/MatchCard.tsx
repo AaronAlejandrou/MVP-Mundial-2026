@@ -226,7 +226,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                   ? 'bg-green-500 text-white shadow-green-500/25'
                   : canSave
                   ? 'bg-primary text-primary-foreground hover:opacity-90 hover:-translate-y-0.5'
-                  : prediction && prediction.goles_a === predA && prediction.goles_b === predB
+                  : prediction && prediction.goles_a === golesA && prediction.goles_b === golesB
                   ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 cursor-default'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               }`}
@@ -241,7 +241,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                   <Check className="w-5 h-5" />
                   ¡Guardado!
                 </span>
-              ) : !canSave && prediction && prediction.goles_a === predA && prediction.goles_b === predB ? (
+              ) : !canSave && prediction && prediction.goles_a === golesA && prediction.goles_b === golesB ? (
                 <span className="flex items-center justify-center gap-2">
                   <Check className="w-4 h-4" />
                   Pronóstico Guardado
