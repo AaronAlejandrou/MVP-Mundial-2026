@@ -1,0 +1,282 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Mundial 2026 - Paleta Minimalista (60-30-10) */
+  --font-size: 16px;
+
+  /* === FONDOS (60%) === */
+  --background: #F4F6F8;
+  --foreground: #1A1D26;
+
+  --card: #FFFFFF;
+  --card-foreground: #1A1D26;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1D26;
+
+  /* === TEXTOS Y ESTRUCTURA (30%) === */
+  --text-primary: #1A1D26;
+  --text-secondary: #6B7280;
+  --border-color: #E5E7EB;
+
+  /* === ACENTOS MUNDIALISTAS (10%) === */
+  --mundial-purple: #7A28CB;
+  --mundial-cyan: #48E5C2;
+  --mundial-fuscia: #E6005C;
+  --mundial-lime: #A4EB33;
+
+  /* Primary - Morado Oficial */
+  --primary: #7A28CB;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary - Cian Menta */
+  --secondary: #48E5C2;
+  --secondary-foreground: #1A1D26;
+
+  /* Muted - Grises sutiles */
+  --muted: #F4F6F8;
+  --muted-foreground: #6B7280;
+
+  /* Accent - Lima */
+  --accent: #A4EB33;
+  --accent-foreground: #1A1D26;
+
+  /* Destructive - Fucsia */
+  --destructive: #E6005C;
+  --destructive-foreground: #FFFFFF;
+
+  /* Borders - Sutiles */
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --input-background: #FFFFFF;
+  --switch-background: #E5E7EB;
+
+  /* Typography */
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+
+  /* Ring/Focus */
+  --ring: #7A28CB;
+
+  /* Charts */
+  --chart-1: #7A28CB;
+  --chart-2: #48E5C2;
+  --chart-3: #A4EB33;
+  --chart-4: #E6005C;
+  --chart-5: #6B7280;
+
+  /* Border Radius - Suave */
+  --radius: 0.75rem;
+  --radius-card: 1rem;
+
+  /* Sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1A1D26;
+  --sidebar-primary: #7A28CB;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F4F6F8;
+  --sidebar-accent-foreground: #1A1D26;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #7A28CB;
+
+  /* Gradientes Minimalistas (uso estratégico en el 10%) */
+  --gradient-primary: linear-gradient(135deg, #7A28CB 0%, #9F5FDB 100%);
+  --gradient-success: linear-gradient(135deg, #48E5C2 0%, #6EEFD4 100%);
+  --gradient-alert: linear-gradient(135deg, #E6005C 0%, #FF1A75 100%);
+  --gradient-perfect: linear-gradient(135deg, #A4EB33 0%, #C0F564 100%);
+
+  /* Blobs sutiles (solo para fondos decorativos) */
+  --blob-purple: rgba(122, 40, 203, 0.08);
+  --blob-cyan: rgba(72, 229, 194, 0.08);
+  --blob-fuscia: rgba(230, 0, 92, 0.08);
+  --blob-lime: rgba(164, 235, 51, 0.08);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-card);
+  --radius-xl: calc(var(--radius-card) + 0.5rem);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Mundial 2026 Custom Colors (Paleta Minimalista) */
+  --color-mundial-purple: var(--mundial-purple);
+  --color-mundial-cyan: var(--mundial-cyan);
+  --color-mundial-fuscia: var(--mundial-fuscia);
+  --color-mundial-lime: var(--mundial-lime);
+  --color-blob-purple: var(--blob-purple);
+  --color-blob-cyan: var(--blob-cyan);
+  --color-blob-fuscia: var(--blob-fuscia);
+  --color-blob-lime: var(--blob-lime);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+
+  /* Scrollbar Hide */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe Area for Mobile Bottom Nav */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Number input arrows hide */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Mundial 2026 - Sombras Minimalistas */
+  .shadow-mundial {
+    box-shadow: 0 1px 3px 0 rgba(26, 29, 38, 0.1),
+                0 1px 2px -1px rgba(26, 29, 38, 0.1);
+  }
+
+  .shadow-mundial-lg {
+    box-shadow: 0 10px 15px -3px rgba(26, 29, 38, 0.1),
+                0 4px 6px -4px rgba(26, 29, 38, 0.1);
+  }
+
+  .text-gradient-mundial {
+    background: linear-gradient(135deg, #7A28CB 0%, #48E5C2 50%, #A4EB33 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Animación sutil */
+  @keyframes pulse-mundial {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(122, 40, 203, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(122, 40, 203, 0);
+    }
+  }
+
+  .animate-pulse-mundial {
+    animation: pulse-mundial 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Hover card animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes zoomIn {
+    from {
+      transform: scale(0.95);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+}

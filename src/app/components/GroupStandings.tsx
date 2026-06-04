@@ -1,0 +1,115 @@
+import { useState } from 'react';
+import { GroupTable } from './GroupTable';
+import { GROUP_STANDINGS } from '../../data/groupStandingsData';
+import { List, Grid3x3 } from 'lucide-react';
+
+interface GroupStandingsProps {
+  selectedGroup?: string;
+  highlightTeam?: string;
+}
+
+export function GroupStandings({ selectedGroup, highlightTeam }: GroupStandingsProps) {
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Si hay un grupo seleccionado, mostrar solo ese grupo
+  const groupsToShow = selectedGroup
+    ? GROUP_STANDINGS.filter(g => g.grupo === selectedGroup)
+    : GROUP_STANDINGS;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gradient-mundial mb-1">
+            {selectedGroup ? `Grupo ${selectedGroup}` : 'Tabla de Posiciones'}
+          </h2>
+          <p className="text-sm text-muted-foreground font-medium">
+            Fase de Grupos - Mundial 2026
+          </p>
+        </div>
+
+        {/* View Mode Toggle */}
+        {!selectedGroup && (
+          <div className="hidden sm:flex items-center gap-1 bg-muted rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 rounded-md transition-all flex items-center gap-2 ${
+                viewMode === 'grid'
+                  ? 'bg-white shadow-sm text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Grid3x3 className="w-4 h-4" />
+              <span className="text-xs font-bold">Cuadrícula</span>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-2 rounded-md transition-all flex items-center gap-2 ${
+                viewMode === 'list'
+                  ? 'bg-white shadow-sm text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              <span className="text-xs font-bold">Lista</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Groups Grid/List */}
+      <div
+        className={
+          viewMode === 'grid' && !selectedGroup
+            ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6'
+            : 'space-y-6 max-w-4xl mx-auto'
+        }
+      >
+        {groupsToShow.map((group) => (
+          <GroupTable
+            key={group.grupo}
+            grupo={group.grupo}
+            equipos={group.equipos}
+            highlightTeam={highlightTeam}
+            compact={viewMode === 'grid' && !selectedGroup}
+          />
+        ))}
+      </div>
+
+      {/* Best Third Places */}
+      {!selectedGroup && (
+        <div className="max-w-4xl mx-auto mt-8">
+          <div className="bg-accent/10 rounded-xl border-2 border-accent p-4 sm:p-6">
+            <h3 className="text-lg sm:text-xl font-bold text-accent mb-3 flex items-center gap-2">
+              <span>📊</span>
+              Mejores Terceros Lugares
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Los 8 mejores terceros lugares de los 12 grupos clasifican a la fase de 16avos de final.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-white rounded-lg p-3 border border-accent/20">
+                <div className="text-xs font-bold text-muted-foreground mb-2">Criterios de Desempate:</div>
+                <ol className="text-xs space-y-1 text-foreground">
+                  <li>1. Mayor cantidad de puntos</li>
+                  <li>2. Mejor diferencia de goles</li>
+                  <li>3. Mayor cantidad de goles a favor</li>
+                  <li>4. Fair Play (menor tarjetas)</li>
+                </ol>
+              </div>
+              <div className="bg-white rounded-lg p-3 border border-accent/20">
+                <div className="text-xs font-bold text-muted-foreground mb-2">Clasificación:</div>
+                <ul className="text-xs space-y-1 text-foreground">
+                  <li>• 1º y 2º de cada grupo → 16avos (24 equipos)</li>
+                  <li>• 8 mejores 3º lugares → 16avos (8 equipos)</li>
+                  <li>• Total: 32 equipos en fase eliminatoria</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
