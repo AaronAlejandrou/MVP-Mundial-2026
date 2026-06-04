@@ -609,8 +609,7 @@ async function calculatePoints(matchId: number, leagueId: string, actualA: numbe
     for (const p of preds) {
       let pts = 0;
       if (p.goles_a === actualA && p.goles_b === actualB) { pts = 5; }
-      else if ((p.goles_a - p.goles_b === actualA - actualB) && Math.sign(p.goles_a - p.goles_b) === Math.sign(actualA - actualB)) { pts = 3; }
-      else if (Math.sign(p.goles_a - p.goles_b) === Math.sign(actualA - actualB)) { pts = 1; }
+      else if (Math.sign(p.goles_a - p.goles_b) === Math.sign(actualA - actualB)) { pts = 2; }
       await db.from("predictions").update({ puntos_obtenidos: pts }).eq("id", p.id);
       const { data: score } = await db.from("scores").select("total").eq("league_id", leagueId).eq("user_id", p.user_id).maybeSingle();
       await db.from("scores").upsert({ league_id:leagueId, user_id:p.user_id, total:(score?.total||0)+pts, updated_at:new Date().toISOString() });
