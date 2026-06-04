@@ -221,23 +221,30 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
             <button
               onClick={handleSave}
               disabled={!canSave}
-              className={`w-full py-2 sm:py-3 px-4 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all duration-300 shadow-md ${
+              className={`w-full py-2 sm:py-3 px-4 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all duration-300 shadow-sm ${
                 isSaved
-                  ? 'bg-secondary text-secondary-foreground'
+                  ? 'bg-green-500 text-white shadow-green-500/25'
                   : canSave
-                  ? 'bg-primary text-primary-foreground hover:opacity-90'
+                  ? 'bg-primary text-primary-foreground hover:opacity-90 hover:-translate-y-0.5'
+                  : prediction && prediction.goles_a === predA && prediction.goles_b === predB
+                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 cursor-default'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               }`}
             >
               {isSaving ? (
                 <span className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                   Guardando...
                 </span>
               ) : isSaved ? (
                 <span className="flex items-center justify-center gap-2">
                   <Check className="w-5 h-5" />
                   ¡Guardado!
+                </span>
+              ) : !canSave && prediction && prediction.goles_a === predA && prediction.goles_b === predB ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Check className="w-4 h-4" />
+                  Pronóstico Guardado
                 </span>
               ) : (
                 'Guardar Pronóstico'
