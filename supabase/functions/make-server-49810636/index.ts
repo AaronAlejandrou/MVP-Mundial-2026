@@ -245,8 +245,32 @@ app.post("/make-server-49810636/predictions", requireAuth, async (c) => {
     const db = getDb();
     const { data: result } = await db.from("match_results").select("estado").eq("match_id", matchId).eq("league_id", leagueId).maybeSingle();
     if (result?.estado === "finalizado") return c.json({ error: "Partido ya finalizado" }, 400);
-    const { data: pred, error } = await db.from("predictions").upsert({ league_id:leagueId, user_id:user.id, match_id:matchId, goles_a:golesA, goles_b:golesB, updated_at:new Date().toISOString() }).select("id, match_id, goles_a, goles_b").single();
-    if (error) return c.json({ error: "Error al guardar" }, 500);
+    const { data: existing } = await db.from("predictions")
+      .select("id")
+      .eq("league_id", leagueId)
+      .eq("user_id", user.id)
+      .eq("match_id", matchId)
+      .maybeSingle();
+
+    let pred, error;
+    if (existing) {
+      const res = await db.from("predictions")
+        .update({ goles_a: golesA, goles_b: golesB, updated_at: new Date().toISOString() })
+        .eq("id", existing.id)
+        .select("id, match_id, goles_a, goles_b")
+        .single();
+      pred = res.data;
+      error = res.error;
+    } else {
+      const res = await db.from("predictions")
+        .insert({ league_id: leagueId, user_id: user.id, match_id: matchId, goles_a: golesA, goles_b: golesB, updated_at: new Date().toISOString() })
+        .select("id, match_id, goles_a, goles_b")
+        .single();
+      pred = res.data;
+      error = res.error;
+    }
+
+    if (error) return c.json({ error: "Error al guardar", details: error }, 500);
     return c.json({ prediction: { id:pred.id, matchId:pred.match_id, goles_a:pred.goles_a, goles_b:pred.goles_b } });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
