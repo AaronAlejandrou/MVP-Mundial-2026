@@ -61,7 +61,6 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     if (prediction) {
       setGolesA(prediction.goles_a);
       setGolesB(prediction.goles_b);
-      setIsSaved(true);
     }
   }, [prediction]);
 
@@ -81,7 +80,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
   };
 
   const hasChanges = () => {
-    if (!prediction) return golesA > 0 || golesB > 0;
+    if (!prediction) return true;
     return golesA !== prediction.goles_a || golesB !== prediction.goles_b;
   };
 
@@ -249,20 +248,45 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
 
         {/* Resultado final + resumen del pronóstico */}
         {match.estado === 'finalizado' && match.goles_a !== null && match.goles_b !== null && (
-          <div className="px-3 sm:px-5 pb-3 sm:pb-5 space-y-2">
-            {/* Resultado oficial */}
-            <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-foreground/5 border border-border">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Resultado</span>
-              <span className="font-score text-xl font-bold text-foreground">
-                {match.goles_a} – {match.goles_b}
-              </span>
+          <div className="px-3 sm:px-5 pb-3 sm:pb-5 space-y-3">
+            <div className="space-y-2">
+              {/* Resultado oficial */}
+              <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-foreground/5 border border-border">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Resultado</span>
+                <span className="font-score text-xl font-bold text-foreground">
+                  {match.goles_a} – {match.goles_b}
+                </span>
+              </div>
+              {/* Pronóstico del jugador */}
+              {prediction && (
+                <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <span className="text-xs font-bold text-primary uppercase tracking-wide">Tu pronóstico</span>
+                  <span className="font-score text-xl font-bold text-primary">
+                    {prediction.goles_a} – {prediction.goles_b}
+                  </span>
+                </div>
+              )}
             </div>
-            {/* Pronóstico del jugador */}
-            {prediction && (
-              <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-primary/5 border border-primary/20">
-                <span className="text-xs font-bold text-primary uppercase tracking-wide">Tu pronóstico</span>
-                <span className="font-score text-xl font-bold text-primary">
-                  {prediction.goles_a} – {prediction.goles_b}
+
+            {/* Puntos obtenidos explícitos */}
+            {prediction?.puntos_obtenidos !== undefined && (
+              <div className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all shadow-sm ${
+                prediction.puntos_obtenidos === 5 
+                  ? 'bg-accent/10 border-accent/40 text-accent' 
+                  : prediction.puntos_obtenidos > 0 
+                    ? 'bg-secondary/10 border-secondary/40 text-secondary'
+                    : 'bg-muted/50 border-border text-muted-foreground'
+              }`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Trophy className="w-5 h-5" />
+                  <span className="font-score text-2xl font-bold">+{prediction.puntos_obtenidos} Pts</span>
+                </div>
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center">
+                  {prediction.puntos_obtenidos === 5 
+                    ? 'Marcador exacto' 
+                    : prediction.puntos_obtenidos === 2
+                      ? 'Resultado ganador / Empate'
+                      : 'Ningún acierto'}
                 </span>
               </div>
             )}
@@ -275,22 +299,6 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
             <div className="flex items-center justify-center gap-2 py-2 sm:py-3 px-3 sm:px-4 rounded-lg border-2 border-destructive/40 bg-destructive/5 text-destructive">
               <Lock className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="text-xs sm:text-sm font-bold">Pronóstico cerrado</span>
-            </div>
-          </div>
-        )}
-
-        {/* Points Badge */}
-        {prediction?.puntos_obtenidos !== undefined && prediction.puntos_obtenidos > 0 && (
-          <div className="absolute top-2 sm:top-3 right-2 sm:right-3">
-            <div
-              className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-lg ${
-                prediction.puntos_obtenidos === 5 ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'
-              }`}
-            >
-              <Trophy className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="font-score text-lg sm:text-xl font-bold">
-                {prediction.puntos_obtenidos}
-              </span>
             </div>
           </div>
         )}

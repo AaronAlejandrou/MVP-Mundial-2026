@@ -211,6 +211,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
             <BracketManager
               league={league}
               accessToken={accessToken}
+              matchResults={matchResults}
               onBracketConfirmed={() => {
                 onResultUpdated?.();
               }}

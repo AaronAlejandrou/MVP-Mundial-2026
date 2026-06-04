@@ -26,6 +26,9 @@ CREATE TABLE leagues (
     nombre VARCHAR(100) NOT NULL,
     codigo_invitacion VARCHAR(20) UNIQUE NOT NULL,
     admin_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    bracket_locked BOOLEAN DEFAULT false,
+    bracket_locked_at TIMESTAMPTZ,
+    knockout_teams JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

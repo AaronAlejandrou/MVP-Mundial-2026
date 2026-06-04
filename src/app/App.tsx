@@ -10,6 +10,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { ToastContainer, useToast } from './components/Toast';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { GROUP_STAGE_MATCHES } from '../data/groupStageMatches';
+import { getResolvedKnockoutMatches } from '../data/knockoutMatches';
 import { apiFetch } from '../lib/api';
 
 export default function App() {
@@ -32,6 +33,9 @@ export default function App() {
   const [highlightTeam, setHighlightTeam] = useState<string | undefined>(undefined);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
+
+  const [bracketLocked, setBracketLocked] = useState(false);
+  const [knockoutTeams, setKnockoutTeams] = useState<Record<number, { team1: string; team2: string }>>({});
 
   // ── Init ────────────────────────────────────────────────────────────────
 
@@ -154,6 +158,23 @@ export default function App() {
     } catch { /* silent */ }
   }, [currentLeague?.id, accessToken]);
 
+  useEffect(() => {
+    if (!currentLeague?.id) return;
+    (async () => {
+      try {
+        const pr = await apiFetch(`/bracket/phase?leagueId=${currentLeague.id}`);
+        if (pr.ok) {
+          const phase = await pr.json();
+          setBracketLocked(phase.bracketLocked);
+          if (phase.bracketLocked) {
+            const tr = await apiFetch(`/bracket/knockout-teams?leagueId=${currentLeague.id}`);
+            if (tr.ok) setKnockoutTeams((await tr.json()).teams ?? {});
+          }
+        }
+      } catch { /* silent */ }
+    })();
+  }, [currentLeague?.id]);
+
   // ── Auth handlers ────────────────────────────────────────────────────────
 
   const handleAuth = async (user: any, token: string) => {
@@ -259,11 +280,12 @@ export default function App() {
     setSelectedGroup(grupo); setHighlightTeam(team); setCurrentView('standings');
   };
 
-  const enrichedMatches = GROUP_STAGE_MATCHES.map(m => ({
+  const baseMatches = bracketLocked ? [...GROUP_STAGE_MATCHES, ...getResolvedKnockoutMatches(knockoutTeams)] : GROUP_STAGE_MATCHES;
+  const enrichedMatches = baseMatches.map(m => ({
     ...m,
     goles_a: matchResults[m.id]?.golesA ?? null,
     goles_b: matchResults[m.id]?.golesB ?? null,
-    estado: (matchResults[m.id]?.estado ?? 'pendiente') as 'pendiente'|'en_juego'|'finalizado',
+    estado: (matchResults[m.id]?.estado ?? m.estado ?? 'pendiente') as 'pendiente'|'en_juego'|'finalizado',
   }));
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -354,7 +376,13 @@ export default function App() {
             onViewTeam={handleViewTeam}
           />
         )}
-        {currentView === 'knockout' && <KnockoutBracket leagueId={currentLeague?.id} />}
+        {currentView === 'knockout' && (
+          <KnockoutBracket 
+            leagueId={currentLeague?.id} 
+            predictions={predictions}
+            onSavePrediction={handleSavePrediction}
+          />
+        )}
         {currentView === 'standings' && <GroupStandings selectedGroup={selectedGroup} highlightTeam={highlightTeam} />}
         {currentView === 'leaderboard' && (
           <div className="max-w-3xl mx-auto">

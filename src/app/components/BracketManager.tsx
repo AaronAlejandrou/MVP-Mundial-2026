@@ -4,6 +4,7 @@ import {
   Lock, Unlock, RefreshCw, ArrowUp, ArrowDown, Loader2
 } from 'lucide-react';
 import { CountryFlag } from './CountryFlag';
+import { GROUP_STAGE_MATCHES } from '../../data/groupStageMatches';
 import { apiFetch } from '../../lib/api';
 
 interface TeamStat {
@@ -20,10 +21,11 @@ interface GroupData {
 interface BracketManagerProps {
   league: any;
   accessToken: string;
+  matchResults: Record<number, any>;
   onBracketConfirmed: () => void;
 }
 
-export function BracketManager({ league, accessToken, onBracketConfirmed }: BracketManagerProps) {
+export function BracketManager({ league, accessToken, matchResults, onBracketConfirmed }: BracketManagerProps) {
   const [phase, setPhase] = useState<{ groupStageOpen: boolean; bracketLocked: boolean; lockedAt: string | null } | null>(null);
   const [standings, setStandings] = useState<GroupData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,21 +41,56 @@ export function BracketManager({ league, accessToken, onBracketConfirmed }: Brac
     } catch { /* silent */ }
   }, [league.id]);
 
-  const loadPreview = useCallback(async () => {
+  const loadPreview = useCallback(() => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`/bracket/standings-preview?leagueId=${league.id}`, { token: accessToken });
-      if (res.ok) {
-        const data = await res.json();
-        setStandings(data.standings || []);
-      } else {
-        const d = await res.json();
-        setError(d.error || 'Error al cargar la tabla');
-      }
-    } catch { setError('Error de conexión'); }
+      // Calcular standings localmente
+      const gruposMap: Record<string, Record<string, TeamStat>> = {};
+
+      // Inicializar
+      GROUP_STAGE_MATCHES.forEach(m => {
+        if (!gruposMap[m.grupo]) gruposMap[m.grupo] = {};
+        if (!gruposMap[m.grupo][m.equipo_a]) {
+          gruposMap[m.grupo][m.equipo_a] = { equipo: m.equipo_a, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dif: 0, pts: 0 };
+        }
+        if (!gruposMap[m.grupo][m.equipo_b]) {
+          gruposMap[m.grupo][m.equipo_b] = { equipo: m.equipo_b, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dif: 0, pts: 0 };
+        }
+      });
+
+      // Procesar resultados
+      GROUP_STAGE_MATCHES.forEach(m => {
+        const result = matchResults[m.id];
+        if (result && result.estado === 'finalizado') {
+          const tA = gruposMap[m.grupo][m.equipo_a];
+          const tB = gruposMap[m.grupo][m.equipo_b];
+          const ga = result.golesA;
+          const gb = result.golesB;
+
+          tA.pj++; tB.pj++;
+          tA.gf += ga; tA.gc += gb; tA.dif = tA.gf - tA.gc;
+          tB.gf += gb; tB.gc += ga; tB.dif = tB.gf - tB.gc;
+
+          if (ga > gb) { tA.pg++; tA.pts += 3; tB.pp++; }
+          else if (gb > ga) { tB.pg++; tB.pts += 3; tA.pp++; }
+          else { tA.pe++; tB.pe++; tA.pts += 1; tB.pts += 1; }
+        }
+      });
+
+      const parsed: GroupData[] = Object.keys(gruposMap).sort().map(grupo => {
+        const equipos = Object.values(gruposMap[grupo]).sort((a, b) => {
+          if (b.pts !== a.pts) return b.pts - a.pts;
+          if (b.dif !== a.dif) return b.dif - a.dif;
+          return b.gf - a.gf;
+        });
+        return { grupo, equipos };
+      });
+
+      setStandings(parsed);
+    } catch { setError('Error calculando tabla'); }
     setIsLoading(false);
-  }, [league.id, accessToken]);
+  }, [matchResults]);
 
   useEffect(() => {
     loadPhase();

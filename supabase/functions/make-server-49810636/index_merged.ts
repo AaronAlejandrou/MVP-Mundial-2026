@@ -1,4 +1,4 @@
-﻿// ===== db.tsx inlined =====
+// ===== db.tsx inlined =====
 /**
  * db.tsx – Cliente Supabase singleton para la Edge Function.
  * Usa service_role key para bypassear RLS en operaciones del servidor.
@@ -546,6 +546,155 @@ app.get("/make-server-49810636/leagues/:leagueId/leaderboard", requireAuth, asyn
 });
 
 // ============================================================
+// BRACKET
+// ============================================================
+
+// GET /bracket/phase
+app.get("/make-server-49810636/bracket/phase", async (c) => {
+  try {
+    const leagueId = c.req.query("leagueId");
+    if (!leagueId) return c.json({ error: "leagueId es requerido" }, 400);
+
+    const db = getDb();
+    const { data: league, error } = await db
+      .from("leagues")
+      .select("bracket_locked, bracket_locked_at")
+      .eq("id", leagueId)
+      .maybeSingle();
+
+    if (error || !league) return c.json({ bracketLocked: false, lockedAt: null });
+
+    return c.json({
+      bracketLocked: league.bracket_locked ?? false,
+      lockedAt: league.bracket_locked_at ?? null,
+    });
+  } catch (error) {
+    console.error("Get phase error:", error);
+    return c.json({ bracketLocked: false, lockedAt: null });
+  }
+});
+
+// GET /bracket/knockout-teams
+app.get("/make-server-49810636/bracket/knockout-teams", async (c) => {
+  try {
+    const leagueId = c.req.query("leagueId");
+    if (!leagueId) return c.json({ error: "leagueId es requerido" }, 400);
+
+    const db = getDb();
+    const { data: league, error } = await db
+      .from("leagues")
+      .select("knockout_teams")
+      .eq("id", leagueId)
+      .maybeSingle();
+
+    if (error || !league) return c.json({ teams: {} });
+
+    return c.json({ teams: league.knockout_teams ?? {} });
+  } catch (error) {
+    console.error("Get knockout teams error:", error);
+    return c.json({ error: "Error interno" }, 500);
+  }
+});
+
+// POST /bracket/confirm-standings
+app.post("/make-server-49810636/bracket/confirm-standings", requireAuth, async (c) => {
+  try {
+    const user = c.get("user");
+    const { leagueId, standings } = await c.req.json();
+
+    if (!leagueId || !standings) {
+      return c.json({ error: "Faltan datos requeridos" }, 400);
+    }
+
+    const db = getDb();
+
+    // Verify admin
+    const { data: league } = await db
+      .from("leagues")
+      .select("admin_id, bracket_locked")
+      .eq("id", leagueId)
+      .maybeSingle();
+
+    if (!league) return c.json({ error: "Liga no encontrada" }, 404);
+    if (league.admin_id !== user.id) return c.json({ error: "Solo el admin puede confirmar el bracket" }, 403);
+    if (league.bracket_locked) return c.json({ error: "El bracket ya está bloqueado" }, 400);
+
+    // Mapear los nombres de los equipos desde el array enviado
+    // standings tiene el formato: [{ grupo: 'A', equipos: [{equipo: 'Mexico'}, ...] }, ...]
+    const groupMap: Record<string, any[]> = {};
+    standings.forEach((g: any) => {
+      groupMap[g.grupo] = g.equipos;
+    });
+
+    // Función auxiliar segura
+    const getTeam = (groupChar: string, positionIdx: number) => {
+      return groupMap[groupChar]?.[positionIdx]?.equipo ?? `${positionIdx + 1}º${groupChar}`;
+    };
+
+    // Calcular los mejores 3ros
+    // Necesitamos juntar a los 3ros de todos los grupos y ordenarlos por Pts -> Dif -> GF
+    const todos3ros = standings.map((g: any) => ({
+      grupo: g.grupo,
+      team: g.equipos[2]
+    })).filter((x: any) => x.team);
+
+    // Ordenar de mejor a peor
+    todos3ros.sort((a: any, b: any) => {
+      if (b.team.pts !== a.team.pts) return b.team.pts - a.team.pts;
+      if (b.team.dif !== a.team.dif) return b.team.dif - a.team.dif;
+      return b.team.gf - a.team.gf;
+    });
+
+    // Tomamos los 8 mejores
+    const bestThirds = todos3ros.slice(0, 8);
+    // Para simplificar la matemática en el backend, asignaremos directamente los equipos
+    // Si queremos la lógica FIFA real con combinaciones exactas, es complejo.
+    // Usaremos un mapeo simplificado basado en el orden que entraron:
+    // 3º A/B/C/D/F -> bestThirds[0].team.equipo, etc.
+
+    const t3 = (idx: number, fallback: string) => bestThirds[idx]?.team?.equipo ?? fallback;
+
+    const knockoutTeams: Record<number, {team1: string, team2: string}> = {
+      // R32_L
+      73: { team1: getTeam('A', 1), team2: getTeam('B', 1) },
+      74: { team1: getTeam('E', 0), team2: t3(0, '3º A/B/C/D/F') },
+      75: { team1: getTeam('F', 0), team2: getTeam('C', 1) },
+      76: { team1: getTeam('C', 0), team2: getTeam('F', 1) },
+      77: { team1: getTeam('I', 0), team2: t3(1, '3º C/D/F/G/H') },
+      78: { team1: getTeam('E', 1), team2: getTeam('I', 1) },
+      79: { team1: getTeam('A', 0), team2: t3(2, '3º C/E/F/H/I') },
+      80: { team1: getTeam('L', 0), team2: t3(3, '3º E/H/I/J/K') },
+      
+      // R32_R
+      81: { team1: getTeam('D', 0), team2: t3(4, '3º B/E/F/I/J') },
+      82: { team1: getTeam('G', 0), team2: t3(5, '3º A/E/H/I/J') },
+      83: { team1: getTeam('K', 1), team2: getTeam('L', 1) },
+      84: { team1: getTeam('H', 0), team2: getTeam('J', 1) },
+      85: { team1: getTeam('B', 0), team2: t3(6, '3º E/F/G/I/J') },
+      86: { team1: getTeam('J', 0), team2: getTeam('H', 1) },
+      87: { team1: getTeam('K', 0), team2: t3(7, '3º D/E/I/J/L') },
+      88: { team1: getTeam('D', 1), team2: getTeam('G', 1) },
+    };
+
+    const { error } = await db
+      .from("leagues")
+      .update({
+        bracket_locked: true,
+        bracket_locked_at: new Date().toISOString(),
+        knockout_teams: knockoutTeams
+      })
+      .eq("id", leagueId);
+
+    if (error) return c.json({ error: "Error al actualizar liga en la base de datos" }, 500);
+
+    return c.json({ message: "Bracket bloqueado y llaves generadas correctamente" });
+  } catch (error) {
+    console.error("Confirm standings error:", error);
+    return c.json({ error: "Error interno" }, 500);
+  }
+});
+
+// ============================================================
 // RESULTADOS DE PARTIDOS
 // ============================================================
 
@@ -795,16 +944,9 @@ async function calculatePoints(
       if (predA === actualGolesA && predB === actualGolesB) {
         points = 5;
       }
-      // Diferencia de goles correcta y ganador correcto: 3 puntos
-      else if (
-        predA - predB === actualGolesA - actualGolesB &&
-        Math.sign(predA - predB) === Math.sign(actualGolesA - actualGolesB)
-      ) {
-        points = 3;
-      }
-      // Solo ganador correcto: 1 punto
+      // Solo ganador correcto o empate: 2 puntos
       else if (Math.sign(predA - predB) === Math.sign(actualGolesA - actualGolesB)) {
-        points = 1;
+        points = 2;
       }
 
       // Actualizar puntos en la predicción

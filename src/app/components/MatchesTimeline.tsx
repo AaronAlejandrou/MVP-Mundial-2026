@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { format, startOfDay, isSameDay, isToday, isFuture } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar } from 'lucide-react';
+import { Calendar, Trophy } from 'lucide-react';
 import { MatchCard } from './MatchCard';
 
 interface Match {
@@ -98,6 +98,29 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
 
   return (
     <div className="space-y-8">
+      {/* Sistema de Puntuación */}
+      <div className="bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 rounded-xl p-4 sm:p-5 border-2 border-border shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="flex-1 text-center md:text-left">
+          <h3 className="font-bold text-foreground flex items-center justify-center md:justify-start gap-2 mb-1.5 text-lg">
+            <Trophy className="w-5 h-5 text-accent" />
+            Sistema de Puntuación Oficial
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Suma puntos automáticamente cuando finalicen los partidos.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
+          <div className="flex flex-col items-center p-2 rounded-lg bg-white border-2 border-accent/40 shadow-sm min-w-[100px] hover:scale-105 transition-transform">
+            <span className="font-score text-2xl font-bold text-accent">+5</span>
+            <span className="text-[10px] font-bold uppercase text-muted-foreground text-center">Marcador<br/>Exacto</span>
+          </div>
+          <div className="flex flex-col items-center p-2 rounded-lg bg-white border-2 border-secondary/40 shadow-sm min-w-[100px] hover:scale-105 transition-transform">
+            <span className="font-score text-2xl font-bold text-secondary">+2</span>
+            <span className="text-[10px] font-bold uppercase text-muted-foreground text-center">Acierto al Ganador<br/>O Empate</span>
+          </div>
+        </div>
+      </div>
+
       {sortedDates.map((dateString, index) => {
         const dateMatches = groupedMatches[dateString];
         const colors = getDateColor(dateString);
