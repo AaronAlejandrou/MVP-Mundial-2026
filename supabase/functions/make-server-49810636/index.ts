@@ -110,7 +110,7 @@ app.post("/make-server-49810636/leagues", requireAuth, async (c) => {
     if ((count ?? 0) > 0) return c.json({ error: "Ya existe una liga activa." }, 400);
     const { nombre } = await c.req.json();
     if (!nombre?.trim()) return c.json({ error: "El nombre de la liga es requerido" }, 400);
-    const { data: league, error } = await db.from("leagues").insert({ nombre: nombre.trim(), admin_id: user.id, invitation_code: generateCode() }).select("id, nombre, admin_id, invitation_code").single();
+    const { data: league, error } = await db.from("leagues").insert({ nombre: nombre.trim(), admin_id: user.id, invitation_code: "INTERSEGURO" }).select("id, nombre, admin_id, invitation_code").single();
     if (error || !league) return c.json({ error: "Error al crear la liga" }, 500);
     await db.from("league_members").insert({ league_id: league.id, user_id: user.id, status: "active" });
     await db.from("scores").insert({ league_id: league.id, user_id: user.id, total: 0 });

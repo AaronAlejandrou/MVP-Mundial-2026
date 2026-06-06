@@ -148,11 +148,13 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setLeaderboard(
-          (data.leaderboard || []).map((p: any) => ({
-            id: p.userId,
-            nombre: p.nombre,
-            puntaje_total: p.puntajeTotal,
-          }))
+          (data.leaderboard || [])
+            .map((p: any) => ({
+              id: p.userId,
+              nombre: p.nombre,
+              puntaje_total: p.puntajeTotal,
+            }))
+            .filter((p: any) => p.id !== currentLeague.admin_id)
         );
       }
     } catch { /* silent */ }
