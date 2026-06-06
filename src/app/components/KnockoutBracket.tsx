@@ -177,39 +177,24 @@ export function KnockoutBracket({
   leagueId,
   predictions,
   matchResults,
-  onSavePrediction 
+  onSavePrediction,
+  knockoutTeams = {},
+  bracketLocked = false
 }: { 
   leagueId?: string;
   predictions?: Record<number, any>;
   matchResults?: Record<number, any>;
   onSavePrediction?: (matchId: number, golesA: number, golesB: number) => Promise<void>;
+  knockoutTeams?: Record<number, { team1: string; team2: string }>;
+  bracketLocked?: boolean;
 }) {
-  const [bracketLocked, setBracketLocked] = useState(false);
-  const [knockoutTeams, setKnockoutTeams] = useState<Record<number, { team1: string; team2: string }>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Modal state
-  const [selectedMatchInfo, setSelectedMatchInfo] = useState<MInfo | null>(null);
-
-  useEffect(() => {
-    if (!leagueId) return;
-    (async () => {
-      setIsLoading(true);
-      try {
-        const pr = await apiFetch(`/bracket/phase?leagueId=${leagueId}`);
-        if (pr.ok) {
-          const phase = await pr.json();
-          // Ahora leemos a partir del historial parcial si confirmGroups tiene avance
-          setBracketLocked(phase.bracketLocked || phase.confirmedGroups?.length > 0);
-          const tr = await apiFetch(`/bracket/knockout-teams?leagueId=${leagueId}`);
-          if (tr.ok) setKnockoutTeams((await tr.json()).teams ?? {});
-        }
-      } catch { /* silent */ }
-      setIsLoading(false);
-    })();
-  }, [leagueId]);
+  // Data is now fetched globally and passed via props
+  const isLoading = false;
 
   const resolveTeam = (id: number, s: 'team1' | 'team2', fb: string) => knockoutTeams[id]?.[s] ?? fb;
+
+  // Modal state
+  const [selectedMatchInfo, setSelectedMatchInfo] = useState<MInfo | null>(null);
 
   const handleMatchClick = (m: MInfo) => {
     // Only allow clicking if teams are resolved

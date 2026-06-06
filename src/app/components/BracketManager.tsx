@@ -174,6 +174,7 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
       if (res.ok) {
         setSuccess(`Grupo ${grupo} confirmado.`);
         await loadPhase();
+        onBracketConfirmed(); // Trigger refresh to show in bracket
         setTimeout(() => setSuccess(null), 3000);
       } else {
         setError(data.error || `Error al confirmar grupo ${grupo}`);

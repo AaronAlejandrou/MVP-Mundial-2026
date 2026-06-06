@@ -140,6 +140,17 @@ export default function App() {
       }
     } catch { /* silent */ }
 
+    try {
+      const pr = await apiFetch(`/bracket/phase?leagueId=${currentLeague.id}`);
+      if (pr.ok) {
+        const phase = await pr.json();
+        setBracketLocked(phase.bracketLocked || phase.confirmedGroups?.length > 0);
+        
+        const tr = await apiFetch(`/bracket/knockout-teams?leagueId=${currentLeague.id}`);
+        if (tr.ok) setKnockoutTeams((await tr.json()).teams ?? {});
+      }
+    } catch { /* silent */ }
+
     await loadLeaderboard();
   }, [currentLeague?.id, accessToken]);
 
@@ -162,22 +173,7 @@ export default function App() {
     } catch { /* silent */ }
   }, [currentLeague?.id, accessToken]);
 
-  useEffect(() => {
-    if (!currentLeague?.id) return;
-    (async () => {
-      try {
-        const pr = await apiFetch(`/bracket/phase?leagueId=${currentLeague.id}`);
-        if (pr.ok) {
-          const phase = await pr.json();
-          setBracketLocked(phase.bracketLocked);
-          if (phase.bracketLocked) {
-            const tr = await apiFetch(`/bracket/knockout-teams?leagueId=${currentLeague.id}`);
-            if (tr.ok) setKnockoutTeams((await tr.json()).teams ?? {});
-          }
-        }
-      } catch { /* silent */ }
-    })();
-  }, [currentLeague?.id]);
+  // Removed the useEffect for bracket phase since it's now in loadUserData
 
   // ── Auth handlers ────────────────────────────────────────────────────────
 
@@ -431,6 +427,8 @@ export default function App() {
             predictions={predictions}
             matchResults={matchResults}
             onSavePrediction={handleSavePrediction}
+            knockoutTeams={knockoutTeams}
+            bracketLocked={bracketLocked}
           />
         )}
         {currentView === 'standings' && (

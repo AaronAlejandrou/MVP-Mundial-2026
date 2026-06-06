@@ -460,7 +460,7 @@ app.get("/make-server-49810636/bracket/standings-preview", requireAuth, async (c
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
 
-/**
+/** POST /bracket/confirm-group */
 app.post("/make-server-49810636/bracket/confirm-group", requireAuth, async (c) => {
   try {
     const user = c.get("user");
