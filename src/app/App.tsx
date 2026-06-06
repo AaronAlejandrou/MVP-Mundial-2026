@@ -380,6 +380,7 @@ export default function App() {
           <KnockoutBracket 
             leagueId={currentLeague?.id} 
             predictions={predictions}
+            matchResults={matchResults}
             onSavePrediction={handleSavePrediction}
           />
         )}

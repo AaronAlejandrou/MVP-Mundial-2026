@@ -294,12 +294,15 @@ app.get("/make-server-49810636/bracket/phase", async (c) => {
   try {
     const leagueId = c.req.query("leagueId");
     if (!leagueId) return c.json({ error: "leagueId requerido" }, 400);
-    const { data: phase } = await getDb().from("league_phase").select("*").eq("league_id", leagueId).maybeSingle();
+    const db = getDb();
+    const { data: phase } = await db.from("league_phase").select("*").eq("league_id", leagueId).maybeSingle();
+    const { data: cg } = await db.from("group_standings_final").select("grupo").eq("league_id", leagueId).eq("posicion", 1);
     // Si no existe el registro aún, la fase de grupos está abierta
     return c.json({
       groupStageOpen: phase?.group_stage_open ?? true,
       bracketLocked:  phase?.bracket_locked  ?? false,
       lockedAt:       phase?.locked_at       ?? null,
+      confirmedGroups: (cg || []).map((g: any) => g.grupo),
     });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
@@ -458,127 +461,101 @@ app.get("/make-server-49810636/bracket/standings-preview", requireAuth, async (c
 });
 
 /**
- * POST /bracket/confirm-standings
- * Admin confirma el orden final de los grupos y bloquea el bracket.
- * Body: { leagueId, standings: [{ grupo, equipos: [{equipo, posicion, pts, gf, gc, dif, pj, pg, pe, pp}] }] }
- * Genera los 16 partidos del Round of 32 con los equipos reales.
- */
-app.post("/make-server-49810636/bracket/confirm-standings", requireAuth, async (c) => {
+app.post("/make-server-49810636/bracket/confirm-group", requireAuth, async (c) => {
   try {
     const user = c.get("user");
-    const { leagueId, standings } = await c.req.json();
-    if (!leagueId || !standings) return c.json({ error: "leagueId y standings requeridos" }, 400);
+    const { leagueId, grupo, equipos } = await c.req.json();
+    if (!leagueId || !grupo || !equipos) return c.json({ error: "Datos requeridos" }, 400);
     const db = getDb();
     const { data: league } = await db.from("leagues").select("admin_id").eq("id", leagueId).maybeSingle();
-    if (!league) return c.json({ error: "Liga no encontrada" }, 404);
-    if (league.admin_id !== user.id) return c.json({ error: "Solo el admin puede confirmar el bracket" }, 403);
-
-    // Verificar que no esté ya bloqueado
-    const { data: phase } = await db.from("league_phase").select("bracket_locked").eq("league_id", leagueId).maybeSingle();
-    if (phase?.bracket_locked) return c.json({ error: "El bracket ya fue confirmado" }, 400);
+    if (!league || league.admin_id !== user.id) return c.json({ error: "No autorizado" }, 403);
 
     const now = new Date().toISOString();
-
-    // Borrar standings previos si hubiera
-    await db.from("group_standings_final").delete().eq("league_id", leagueId);
-
-    // Insertar el orden final confirmado
-    const rows: any[] = [];
-    for (const g of standings) {
-      g.equipos.forEach((e: any, idx: number) => {
-        rows.push({
-          league_id: leagueId,
-          grupo: g.grupo,
-          posicion: idx + 1,
-          equipo: e.equipo,
-          pts: e.pts ?? 0,
-          gf: e.gf ?? 0,
-          gc: e.gc ?? 0,
-          dif: e.dif ?? 0,
-          pj: e.pj ?? 0,
-          pg: e.pg ?? 0,
-          pe: e.pe ?? 0,
-          pp: e.pp ?? 0,
-          confirmed_at: now,
-          confirmed_by: user.id,
-        });
-      });
-    }
+    // Insertar standings para este grupo
+    await db.from("group_standings_final").delete().eq("league_id", leagueId).eq("grupo", grupo);
+    
+    const rows = equipos.map((e: any, idx: number) => ({
+      league_id: leagueId, grupo, posicion: idx + 1, equipo: e.equipo,
+      pts: e.pts ?? 0, gf: e.gf ?? 0, gc: e.gc ?? 0, dif: e.dif ?? 0,
+      pj: e.pj ?? 0, pg: e.pg ?? 0, pe: e.pe ?? 0, pp: e.pp ?? 0,
+      confirmed_at: now, confirmed_by: user.id
+    }));
     await db.from("group_standings_final").insert(rows);
 
-    // Construir el mapa grupo → [1º,2º,3º,4º]
-    const gmap: Record<string, string[]> = {};
-    for (const g of standings) {
-      gmap[g.grupo] = g.equipos.map((e: any) => e.equipo);
-    }
+    const getPos = (pos: number) => equipos[pos - 1]?.equipo ?? `${pos}º${grupo}`;
+    const t1 = getPos(1);
+    const t2 = getPos(2);
 
-    // Calcular los 8 mejores terceros (para slots 3º wildcards)
-    const thirds: { equipo: string; grupo: string; pts: number; dif: number; gf: number }[] = [];
-    for (const g of standings) {
-      if (g.equipos[2]) {
-        const e = g.equipos[2];
-        thirds.push({ equipo: e.equipo, grupo: g.grupo, pts: e.pts ?? 0, dif: e.dif ?? 0, gf: e.gf ?? 0 });
+    const matchUpdates = [];
+    if (grupo === 'A') { matchUpdates.push({ m:73, s:'team1', v:t2 }, { m:79, s:'team1', v:t1 }); }
+    if (grupo === 'B') { matchUpdates.push({ m:73, s:'team2', v:t2 }, { m:85, s:'team1', v:t1 }); }
+    if (grupo === 'C') { matchUpdates.push({ m:75, s:'team2', v:t2 }, { m:76, s:'team1', v:t1 }); }
+    if (grupo === 'D') { matchUpdates.push({ m:81, s:'team1', v:t1 }, { m:88, s:'team1', v:t2 }); }
+    if (grupo === 'E') { matchUpdates.push({ m:74, s:'team1', v:t1 }, { m:78, s:'team1', v:t2 }); }
+    if (grupo === 'F') { matchUpdates.push({ m:75, s:'team1', v:t1 }, { m:76, s:'team2', v:t2 }); }
+    if (grupo === 'G') { matchUpdates.push({ m:82, s:'team1', v:t1 }, { m:88, s:'team2', v:t2 }); }
+    if (grupo === 'H') { matchUpdates.push({ m:84, s:'team1', v:t1 }, { m:86, s:'team2', v:t2 }); }
+    if (grupo === 'I') { matchUpdates.push({ m:77, s:'team1', v:t1 }, { m:78, s:'team2', v:t2 }); }
+    if (grupo === 'J') { matchUpdates.push({ m:84, s:'team2', v:t2 }, { m:86, s:'team1', v:t1 }); }
+    if (grupo === 'K') { matchUpdates.push({ m:83, s:'team1', v:t2 }, { m:87, s:'team1', v:t1 }); }
+    if (grupo === 'L') { matchUpdates.push({ m:80, s:'team1', v:t1 }, { m:83, s:'team2', v:t2 }); }
+
+    for (const update of matchUpdates) {
+      const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", update.m).maybeSingle();
+      if (ext) {
+        await db.from("knockout_match_teams").update({ [update.s]: update.v }).eq("league_id", leagueId).eq("match_id", update.m);
+      } else {
+        await db.from("knockout_match_teams").insert({
+          league_id: leagueId, match_id: update.m, 
+          team1: update.s === 'team1' ? update.v : null,
+          team2: update.s === 'team2' ? update.v : null
+        });
       }
     }
-    thirds.sort((a, b) => b.pts - a.pts || b.dif - a.dif || b.gf - a.gf);
-    const best8thirds = thirds.slice(0, 8).map(t => t.equipo);
 
-    // Mapeo oficial de los 16avos (según worldcup.json 2026):
-    // Partido 73: 2ºA vs 2ºB
-    // Partido 74: 1ºE vs 3º(A/B/C/D/F)
-    // Partido 75: 1ºF vs 2ºC
-    // Partido 76: 1ºC vs 2ºF
-    // Partido 77: 1ºI vs 3º(C/D/F/G/H)
-    // Partido 78: 2ºE vs 2ºI
-    // Partido 79: 1ºA vs 3º(C/E/F/H/I)
-    // Partido 80: 1ºL vs 3º(E/H/I/J/K)
-    // Partido 81: 1ºD vs 3º(B/E/F/I/J)
-    // Partido 82: 1ºG vs 3º(A/E/H/I/J)
-    // Partido 83: 2ºK vs 2ºL
-    // Partido 84: 1ºH vs 2ºJ
-    // Partido 85: 1ºB vs 3º(E/F/G/I/J)
-    // Partido 86: 1ºJ vs 2ºH
-    // Partido 87: 1ºK vs 3º(D/E/I/J/L)
-    // Partido 88: 2ºD vs 2ºG
-    const getPos = (g: string, pos: number) => gmap[g]?.[pos - 1] ?? `${pos}º${g}`;
-    const getBest3rd = (idx: number) => best8thirds[idx] ?? `3º Mejor #${idx + 1}`;
+    return c.json({ message: "Grupo confirmado", grupo });
+  } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
 
-    const knockoutMatches = [
-      { match_id: 73, team1: getPos("A", 2), team2: getPos("B", 2) },
-      { match_id: 74, team1: getPos("E", 1), team2: getBest3rd(0) },
-      { match_id: 75, team1: getPos("F", 1), team2: getPos("C", 2) },
-      { match_id: 76, team1: getPos("C", 1), team2: getPos("F", 2) },
-      { match_id: 77, team1: getPos("I", 1), team2: getBest3rd(1) },
-      { match_id: 78, team1: getPos("E", 2), team2: getPos("I", 2) },
-      { match_id: 79, team1: getPos("A", 1), team2: getBest3rd(2) },
-      { match_id: 80, team1: getPos("L", 1), team2: getBest3rd(3) },
-      { match_id: 81, team1: getPos("D", 1), team2: getBest3rd(4) },
-      { match_id: 82, team1: getPos("G", 1), team2: getBest3rd(5) },
-      { match_id: 83, team1: getPos("K", 2), team2: getPos("L", 2) },
-      { match_id: 84, team1: getPos("H", 1), team2: getPos("J", 2) },
-      { match_id: 85, team1: getPos("B", 1), team2: getBest3rd(6) },
-      { match_id: 86, team1: getPos("J", 1), team2: getPos("H", 2) },
-      { match_id: 87, team1: getPos("K", 1), team2: getBest3rd(7) },
-      { match_id: 88, team1: getPos("D", 2), team2: getPos("G", 2) },
+app.post("/make-server-49810636/bracket/confirm-thirds", requireAuth, async (c) => {
+  try {
+    const user = c.get("user");
+    const { leagueId, bestThirds } = await c.req.json();
+    if (!leagueId || !bestThirds || bestThirds.length !== 8) return c.json({ error: "Faltan los 8 terceros" }, 400);
+    const db = getDb();
+    const { data: league } = await db.from("leagues").select("admin_id").eq("id", leagueId).maybeSingle();
+    if (!league || league.admin_id !== user.id) return c.json({ error: "No autorizado" }, 403);
+
+    const thirdUpdates = [
+      { m:74, s:'team2', v:bestThirds[0] },
+      { m:77, s:'team2', v:bestThirds[1] },
+      { m:79, s:'team2', v:bestThirds[2] },
+      { m:80, s:'team2', v:bestThirds[3] },
+      { m:81, s:'team2', v:bestThirds[4] },
+      { m:82, s:'team2', v:bestThirds[5] },
+      { m:85, s:'team2', v:bestThirds[6] },
+      { m:87, s:'team2', v:bestThirds[7] },
     ];
 
-    // Borrar knockout_match_teams previos y reinsertar
-    await db.from("knockout_match_teams").delete().eq("league_id", leagueId);
-    await db.from("knockout_match_teams").insert(
-      knockoutMatches.map(m => ({ league_id: leagueId, match_id: m.match_id, team1: m.team1, team2: m.team2 }))
-    );
+    for (const update of thirdUpdates) {
+      const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", update.m).maybeSingle();
+      if (ext) {
+        await db.from("knockout_match_teams").update({ [update.s]: update.v }).eq("league_id", leagueId).eq("match_id", update.m);
+      } else {
+        await db.from("knockout_match_teams").insert({
+          league_id: leagueId, match_id: update.m, 
+          team1: null, team2: update.v
+        });
+      }
+    }
 
-    // Bloquear la fase de grupos
+    const now = new Date().toISOString();
     await db.from("league_phase").upsert({
-      league_id: leagueId,
-      group_stage_open: false,
-      bracket_locked: true,
-      locked_at: now,
-      locked_by: user.id,
-      updated_at: now,
+      league_id: leagueId, group_stage_open: false, bracket_locked: true,
+      locked_at: now, locked_by: user.id, updated_at: now,
     });
 
-    return c.json({ message: "Bracket confirmado y llaves armadas", knockoutMatches });
+    return c.json({ message: "Terceros confirmados y bracket bloqueado" });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Trophy, AlertTriangle, Check, ChevronUp, ChevronDown,
-  Lock, Unlock, RefreshCw, ArrowUp, ArrowDown, Loader2
+  Lock, Unlock, RefreshCw, ArrowUp, ArrowDown, Loader2, Award
 } from 'lucide-react';
 import { CountryFlag } from './CountryFlag';
 import { GROUP_STAGE_MATCHES } from '../../data/groupStageMatches';
@@ -26,13 +26,16 @@ interface BracketManagerProps {
 }
 
 export function BracketManager({ league, accessToken, matchResults, onBracketConfirmed }: BracketManagerProps) {
-  const [phase, setPhase] = useState<{ groupStageOpen: boolean; bracketLocked: boolean; lockedAt: string | null } | null>(null);
+  const [phase, setPhase] = useState<{ groupStageOpen: boolean; bracketLocked: boolean; lockedAt: string | null; confirmedGroups: string[] } | null>(null);
   const [standings, setStandings] = useState<GroupData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [isConfirming, setIsConfirming] = useState<string | null>(null); // 'A', 'B', or 'thirds'
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [expandedGroup, setExpandedGroup] = useState<string | null>('A');
+  
+  // Para los terceros
+  const [thirds, setThirds] = useState<TeamStat[]>([]);
 
   const loadPhase = useCallback(async () => {
     try {
@@ -41,14 +44,13 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
     } catch { /* silent */ }
   }, [league.id]);
 
-  const loadPreview = useCallback(() => {
+  const loadPreview = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Calcular standings localmente
+      // Calcular standings localmente basandonos en matchResults
       const gruposMap: Record<string, Record<string, TeamStat>> = {};
 
-      // Inicializar
       GROUP_STAGE_MATCHES.forEach(m => {
         if (!gruposMap[m.grupo]) gruposMap[m.grupo] = {};
         if (!gruposMap[m.grupo][m.equipo_a]) {
@@ -59,7 +61,6 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
         }
       });
 
-      // Procesar resultados
       GROUP_STAGE_MATCHES.forEach(m => {
         const result = matchResults[m.id];
         if (result && result.estado === 'finalizado') {
@@ -78,7 +79,18 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
         }
       });
 
+      // Primero vemos si ya hay standings confirmados desde la bd
+      const sfRes = await apiFetch(`/bracket/group-standings-final?leagueId=${league.id}`);
+      let dbStandings: Record<string, any[]> = {};
+      if (sfRes.ok) {
+        const data = await sfRes.json();
+        data.standings.forEach((g: any) => { dbStandings[g.grupo] = g.equipos; });
+      }
+
       const parsed: GroupData[] = Object.keys(gruposMap).sort().map(grupo => {
+        if (dbStandings[grupo]) {
+          return { grupo, equipos: dbStandings[grupo] };
+        }
         const equipos = Object.values(gruposMap[grupo]).sort((a, b) => {
           if (b.pts !== a.pts) return b.pts - a.pts;
           if (b.dif !== a.dif) return b.dif - a.dif;
@@ -90,14 +102,25 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
       setStandings(parsed);
     } catch { setError('Error calculando tabla'); }
     setIsLoading(false);
-  }, [matchResults]);
+  }, [matchResults, league.id]);
 
   useEffect(() => {
     loadPhase();
     loadPreview();
   }, [loadPhase, loadPreview]);
 
-  // Mover equipo hacia arriba en su grupo
+  // Construir la lista de terceros inicial cuando todos los grupos están confirmados
+  useEffect(() => {
+    if (phase?.confirmedGroups?.length === 12 && !phase?.bracketLocked && thirds.length === 0) {
+      const allThirds: TeamStat[] = [];
+      standings.forEach(g => {
+        if (g.equipos[2]) allThirds.push({ ...g.equipos[2], grupo: g.grupo } as any);
+      });
+      allThirds.sort((a, b) => b.pts - a.pts || b.dif - a.dif || b.gf - a.gf);
+      setThirds(allThirds);
+    }
+  }, [phase?.confirmedGroups, phase?.bracketLocked, standings, thirds.length]);
+
   const moveUp = (grupoIdx: number, teamIdx: number) => {
     if (teamIdx === 0) return;
     setStandings(prev => {
@@ -108,7 +131,6 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
     });
   };
 
-  // Mover equipo hacia abajo en su grupo
   const moveDown = (grupoIdx: number, teamIdx: number) => {
     setStandings(prev => {
       const next = prev.map(g => ({ ...g, equipos: [...g.equipos] }));
@@ -119,32 +141,71 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
     });
   };
 
-  const handleConfirm = async () => {
-    if (!window.confirm(
-      '¿Confirmar el bracket? Esta acción cerrará la fase de grupos y armará las llaves eliminatorias. No se puede deshacer.'
-    )) return;
+  const moveThirdUp = (idx: number) => {
+    if (idx === 0) return;
+    setThirds(prev => {
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      return next;
+    });
+  };
 
-    setIsConfirming(true);
+  const moveThirdDown = (idx: number) => {
+    if (idx === thirds.length - 1) return;
+    setThirds(prev => {
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      return next;
+    });
+  };
+
+  const handleConfirmGroup = async (grupo: string, equipos: TeamStat[]) => {
+    if (!window.confirm(`¿Confirmar el Grupo ${grupo}? El 1º y 2º irán a las llaves eliminatorias.`)) return;
+    
+    setIsConfirming(grupo);
     setError(null);
     try {
-      const res = await apiFetch('/bracket/confirm-standings', {
+      const res = await apiFetch('/bracket/confirm-group', {
         method: 'POST',
         token: accessToken,
-        body: { leagueId: league.id, standings },
+        body: { leagueId: league.id, grupo, equipos },
       });
       const data = await res.json();
       if (res.ok) {
-        setSuccess('¡Bracket confirmado! Las llaves ya están disponibles para todos.');
+        setSuccess(`Grupo ${grupo} confirmado.`);
+        await loadPhase();
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(data.error || `Error al confirmar grupo ${grupo}`);
+      }
+    } catch { setError('Error de conexión'); }
+    setIsConfirming(null);
+  };
+
+  const handleConfirmThirds = async () => {
+    if (!window.confirm('¿Confirmar los mejores terceros y bloquear el bracket final?')) return;
+    
+    setIsConfirming('thirds');
+    setError(null);
+    try {
+      const best8 = thirds.slice(0, 8).map(t => t.equipo);
+      const res = await apiFetch('/bracket/confirm-thirds', {
+        method: 'POST',
+        token: accessToken,
+        body: { leagueId: league.id, bestThirds: best8 },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess('¡Bracket bloqueado! Las llaves completas están disponibles.');
         await loadPhase();
         onBracketConfirmed();
       } else {
-        setError(data.error || 'Error al confirmar el bracket');
+        setError(data.error || 'Error al confirmar terceros');
       }
     } catch { setError('Error de conexión'); }
-    setIsConfirming(false);
+    setIsConfirming(null);
   };
 
-  // ── Si el bracket ya está bloqueado ──
   if (phase?.bracketLocked) {
     return (
       <div className="space-y-4">
@@ -160,50 +221,16 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
           </div>
         </div>
         <p className="text-sm text-muted-foreground text-center">
-          Las llaves eliminatorias ya están activas. Los participantes pueden ver y pronosticar los partidos.
+          Las llaves eliminatorias ya están activas y completas.
         </p>
       </div>
     );
   }
 
-  const totalMatches = 72;
-  const finishedCount = standings.reduce((acc, g) =>
-    acc + g.equipos.reduce((a, e) => a + e.pj, 0) / 2, 0
-  );
-  const pct = Math.round((finishedCount / totalMatches) * 100);
+  const allConfirmed = phase?.confirmedGroups?.length === 12;
 
   return (
     <div className="space-y-5">
-      {/* Estado */}
-      <div className="bg-accent/10 border-2 border-accent/40 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Unlock className="w-5 h-5 text-accent" />
-            <span className="font-bold text-foreground">Fase de Grupos activa</span>
-          </div>
-          <span className="text-xs font-bold text-accent">{Math.round(finishedCount)}/{totalMatches} partidos</span>
-        </div>
-        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-2 rounded-full bg-accent transition-all duration-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Completa todos los partidos e ingresa sus resultados antes de confirmar el bracket.
-        </p>
-      </div>
-
-      {/* Instrucción */}
-      <div className="bg-muted rounded-xl p-3 border border-border text-sm text-muted-foreground">
-        <p>
-          <span className="font-bold text-foreground">Instrucciones:</span>{' '}
-          La tabla se calcula automáticamente por Pts → Dif. de Goles → Goles a Favor.
-          Usa las flechas <ArrowUp className="inline w-3 h-3" /><ArrowDown className="inline w-3 h-3" /> para ajustar el orden en caso de empate no resoluble.
-          Cuando estés conforme, pulsa <span className="font-bold text-accent">Confirmar Bracket</span>.
-        </p>
-      </div>
-
       {/* Botón recargar */}
       <div className="flex justify-end">
         <button
@@ -212,7 +239,7 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
           className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-muted hover:bg-muted/80 rounded-lg transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          Recalcular
+          Recargar
         </button>
       </div>
 
@@ -230,160 +257,161 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
         </div>
       )}
 
-      {/* Tabla por grupo */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {standings.map((group, gi) => (
-            <div key={group.grupo} className="border-2 border-border rounded-xl overflow-hidden">
-              {/* Header del grupo */}
-              <button
-                onClick={() => setExpandedGroup(expandedGroup === group.grupo ? null : group.grupo)}
-                className="w-full flex items-center justify-between px-4 py-2.5 bg-muted hover:bg-muted/80 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-primary text-sm">GRUPO {group.grupo}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {group.equipos.filter(e => e.pj > 0).length === 4
-                      ? '• Completo ✓'
-                      : `• ${group.equipos.reduce((a, e) => a + e.pj, 0) / 2}/3 partidos`}
-                  </span>
-                </div>
-                {expandedGroup === group.grupo
-                  ? <ChevronUp className="w-4 h-4 text-primary" />
-                  : <ChevronDown className="w-4 h-4 text-primary" />
-                }
-              </button>
-
-              {expandedGroup === group.grupo && (
-                <div className="bg-white">
-                  {/* Cabecera tabla */}
-                  <div className="grid grid-cols-[auto_1fr_repeat(7,_auto)_auto] gap-x-2 items-center px-3 py-1.5 border-b border-border bg-muted/30">
-                    <span className="text-[10px] font-bold text-muted-foreground w-4">#</span>
-                    <span className="text-[10px] font-bold text-muted-foreground">Equipo</span>
-                    <span className="text-[10px] font-bold text-muted-foreground text-center w-6">PJ</span>
-                    <span className="text-[10px] font-bold text-muted-foreground text-center w-6">PG</span>
-                    <span className="text-[10px] font-bold text-muted-foreground text-center w-6">PE</span>
-                    <span className="text-[10px] font-bold text-muted-foreground text-center w-6">PP</span>
-                    <span className="text-[10px] font-bold text-muted-foreground text-center w-8">GF</span>
-                    <span className="text-[10px] font-bold text-muted-foreground text-center w-8">GC</span>
-                    <span className="text-[10px] font-bold text-muted-foreground text-center w-8">DIF</span>
-                    <span className="text-[10px] font-bold text-primary text-center w-8">PTS</span>
-                  </div>
-
-                  {group.equipos.map((team, ti) => {
-                    const isQ1 = ti === 0;
-                    const isQ2 = ti === 1;
-                    const isQ3 = ti === 2;
-
-                    return (
-                      <div
-                        key={team.equipo}
-                        className={`grid grid-cols-[auto_1fr_repeat(7,_auto)_auto] gap-x-2 items-center px-3 py-2 border-b border-border/40 last:border-0 ${
-                          isQ1 ? 'bg-secondary/8' : isQ2 ? 'bg-secondary/4' : isQ3 ? 'bg-accent/5' : ''
-                        }`}
-                      >
-                        {/* Posición + color */}
-                        <div className="flex items-center gap-1 w-4">
-                          <div className={`w-1 h-6 rounded-full ${
-                            isQ1 ? 'bg-secondary' : isQ2 ? 'bg-secondary/60' : isQ3 ? 'bg-accent' : 'bg-muted'
-                          }`} />
-                          <span className={`text-xs font-bold ${
-                            isQ1 ? 'text-secondary' : isQ2 ? 'text-secondary/80' : isQ3 ? 'text-accent' : 'text-muted-foreground'
-                          }`}>{ti + 1}</span>
-                        </div>
-
-                        {/* Nombre + bandera */}
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <CountryFlag country={team.equipo} size="xs" />
-                          <span className="text-xs font-bold truncate">{team.equipo}</span>
-                        </div>
-
-                        {/* Estadísticas */}
-                        <span className="text-xs text-center text-muted-foreground w-6">{team.pj}</span>
-                        <span className="text-xs text-center text-muted-foreground w-6">{team.pg}</span>
-                        <span className="text-xs text-center text-muted-foreground w-6">{team.pe}</span>
-                        <span className="text-xs text-center text-muted-foreground w-6">{team.pp}</span>
-                        <span className="text-xs text-center text-muted-foreground w-8">{team.gf}</span>
-                        <span className="text-xs text-center text-muted-foreground w-8">{team.gc}</span>
-                        <span className={`text-xs text-center font-bold w-8 ${team.dif > 0 ? 'text-secondary' : team.dif < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                          {team.dif > 0 ? `+${team.dif}` : team.dif}
-                        </span>
-                        <span className="text-sm font-bold text-primary text-center w-8">{team.pts}</span>
+      {/* Mejores Terceros Interface */}
+      {allConfirmed && !phase?.bracketLocked && thirds.length > 0 && (
+        <div className="border-2 border-accent rounded-xl overflow-hidden shadow-md">
+          <div className="bg-accent text-accent-foreground px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Award className="w-5 h-5" />
+              <span className="font-bold">Resolución de Mejores Terceros</span>
+            </div>
+          </div>
+          <div className="p-4 bg-accent/5">
+            <p className="text-sm text-muted-foreground mb-4">
+              Todos los grupos han sido confirmados. Ahora debes seleccionar y ordenar a los 8 mejores terceros.
+              El orden es importante porque define contra qué 1er lugar juegan. Usa las flechas para resolver empates manualmente (ej. Fair Play o Sorteo).
+            </p>
+            
+            <div className="space-y-2 bg-white rounded-lg border border-border p-2">
+              {thirds.map((t: any, i) => {
+                const isClasificado = i < 8;
+                return (
+                  <div key={t.equipo} className={`flex items-center justify-between p-2 rounded-lg border-2 ${isClasificado ? 'border-secondary/30 bg-secondary/5' : 'border-border/50 bg-muted/50'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isClasificado ? 'bg-secondary text-white' : 'bg-muted-foreground text-white'}`}>
+                        {i + 1}
                       </div>
-                    );
-                  })}
-
-                  {/* Controles de reordenamiento */}
-                  <div className="px-3 py-2 bg-muted/20 border-t border-border">
-                    <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Ajustar orden (empates):</p>
-                    <div className="space-y-1">
-                      {group.equipos.map((team, ti) => (
-                        <div key={team.equipo} className="flex items-center justify-between gap-2 py-0.5">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-[10px] font-bold text-muted-foreground w-3">{ti + 1}.</span>
-                            <CountryFlag country={team.equipo} size="xs" />
-                            <span className="text-[10px] font-bold truncate">{team.equipo}</span>
-                          </div>
-                          <div className="flex gap-1 flex-shrink-0">
-                            <button
-                              onClick={() => moveUp(gi, ti)}
-                              disabled={ti === 0}
-                              className="w-6 h-6 flex items-center justify-center rounded bg-muted hover:bg-primary hover:text-primary-foreground transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-                            >
-                              <ArrowUp className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={() => moveDown(gi, ti)}
-                              disabled={ti === group.equipos.length - 1}
-                              className="w-6 h-6 flex items-center justify-center rounded bg-muted hover:bg-primary hover:text-primary-foreground transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-                            >
-                              <ArrowDown className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                      <CountryFlag country={t.equipo} size="sm" />
+                      <div className="flex flex-col">
+                        <span className="font-bold text-sm">{t.equipo} <span className="text-muted-foreground font-normal text-xs">(G. {t.grupo})</span></span>
+                        <span className="text-[10px] text-muted-foreground">{t.pts} pts | {t.dif > 0 ? `+${t.dif}` : t.dif} dif | {t.gf} gf</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-bold uppercase ${isClasificado ? 'text-secondary' : 'text-muted-foreground'}`}>
+                        {isClasificado ? 'Clasifica' : 'Eliminado'}
+                      </span>
+                      <div className="flex gap-1">
+                        <button onClick={() => moveThirdUp(i)} disabled={i === 0} className="w-7 h-7 flex items-center justify-center rounded bg-muted hover:bg-primary hover:text-white transition-all disabled:opacity-30">
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => moveThirdDown(i)} disabled={i === thirds.length - 1} className="w-7 h-7 flex items-center justify-center rounded bg-muted hover:bg-primary hover:text-white transition-all disabled:opacity-30">
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Leyenda */}
-                  <div className="px-3 pb-2 flex items-center gap-3 text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-secondary inline-block" />1º–2º → Clasifican</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent inline-block" />3º → Mejor 3ro</span>
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
-          ))}
+            
+            <button
+              onClick={handleConfirmThirds}
+              disabled={isConfirming === 'thirds'}
+              className="mt-4 w-full py-3 bg-accent text-accent-foreground font-bold rounded-lg flex justify-center items-center gap-2 hover:bg-accent/90 shadow-md transition-all disabled:opacity-50"
+            >
+              {isConfirming === 'thirds' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5" />}
+              Confirmar Terceros y Bloquear Bracket
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Botón confirmar */}
-      {!phase?.bracketLocked && standings.length > 0 && (
-        <div className="sticky bottom-0 pt-4 pb-2 bg-white border-t-2 border-border mt-4">
-          <button
-            onClick={handleConfirm}
-            disabled={isConfirming || isLoading}
-            className="w-full py-3 px-6 bg-accent text-accent-foreground rounded-xl font-bold text-sm hover:bg-accent/90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isConfirming ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Confirmando bracket...
-              </>
-            ) : (
-              <>
-                <Trophy className="w-4 h-4" />
-                Confirmar Bracket y Armar Llaves
-              </>
-            )}
-          </button>
-          <p className="text-[10px] text-center text-muted-foreground mt-1.5">
-            ⚠️ Esta acción es irreversible. Cierra la fase de grupos y activa los 16avos de final.
-          </p>
+      {/* Lista de Grupos */}
+      {isLoading ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+      ) : (
+        <div className="space-y-3">
+          {standings.map((group, gi) => {
+            const isConfirmed = phase?.confirmedGroups?.includes(group.grupo);
+            const isFinished = group.equipos.filter(e => e.pj > 0).length === 4 && group.equipos.reduce((a, e) => a + e.pj, 0) === 12;
+
+            return (
+              <div key={group.grupo} className={`border-2 rounded-xl overflow-hidden transition-all ${isConfirmed ? 'border-secondary/40' : 'border-border'}`}>
+                <button
+                  onClick={() => setExpandedGroup(expandedGroup === group.grupo ? null : group.grupo)}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors ${isConfirmed ? 'bg-secondary/10 hover:bg-secondary/20' : 'bg-muted hover:bg-muted/80'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold text-sm ${isConfirmed ? 'text-secondary' : 'text-primary'}`}>GRUPO {group.grupo}</span>
+                    {isConfirmed ? (
+                      <span className="flex items-center gap-1 text-xs font-bold text-secondary"><Check className="w-3 h-3"/> Confirmado</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {isFinished ? '• Listo para confirmar' : `• ${group.equipos.reduce((a, e) => a + e.pj, 0) / 2}/6 partidos`}
+                      </span>
+                    )}
+                  </div>
+                  {expandedGroup === group.grupo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+
+                {expandedGroup === group.grupo && (
+                  <div className="bg-white">
+                    <div className="grid grid-cols-[auto_1fr_repeat(7,_auto)_auto] gap-x-2 items-center px-3 py-1.5 border-b border-border bg-muted/30">
+                      <span className="text-[10px] font-bold text-muted-foreground w-4">#</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">Equipo</span>
+                      <span className="text-[10px] font-bold text-muted-foreground text-center w-6">PJ</span>
+                      <span className="text-[10px] font-bold text-muted-foreground text-center w-6">PG</span>
+                      <span className="text-[10px] font-bold text-muted-foreground text-center w-6">PE</span>
+                      <span className="text-[10px] font-bold text-muted-foreground text-center w-6">PP</span>
+                      <span className="text-[10px] font-bold text-muted-foreground text-center w-8">GF</span>
+                      <span className="text-[10px] font-bold text-muted-foreground text-center w-8">GC</span>
+                      <span className="text-[10px] font-bold text-muted-foreground text-center w-8">DIF</span>
+                      <span className="text-[10px] font-bold text-primary text-center w-8">PTS</span>
+                    </div>
+
+                    {group.equipos.map((team, ti) => {
+                      const isQ1 = ti === 0;
+                      const isQ2 = ti === 1;
+                      const isQ3 = ti === 2;
+                      return (
+                        <div key={team.equipo} className={`grid grid-cols-[auto_1fr_repeat(7,_auto)_auto] gap-x-2 items-center px-3 py-2 border-b border-border/40 last:border-0 ${
+                          isQ1 ? 'bg-secondary/8' : isQ2 ? 'bg-secondary/4' : isQ3 ? 'bg-accent/5' : ''
+                        }`}>
+                          <div className="flex items-center gap-1 w-4">
+                            <span className={`text-xs font-bold ${isQ1 ? 'text-secondary' : isQ2 ? 'text-secondary/80' : isQ3 ? 'text-accent' : 'text-muted-foreground'}`}>{ti + 1}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <CountryFlag country={team.equipo} size="xs" />
+                            <span className="text-xs font-bold truncate">{team.equipo}</span>
+                          </div>
+                          <span className="text-xs text-center text-muted-foreground w-6">{team.pj}</span>
+                          <span className="text-xs text-center text-muted-foreground w-6">{team.pg}</span>
+                          <span className="text-xs text-center text-muted-foreground w-6">{team.pe}</span>
+                          <span className="text-xs text-center text-muted-foreground w-6">{team.pp}</span>
+                          <span className="text-xs text-center text-muted-foreground w-8">{team.gf}</span>
+                          <span className="text-xs text-center text-muted-foreground w-8">{team.gc}</span>
+                          <span className="text-xs text-center font-bold w-8 text-muted-foreground">{team.dif > 0 ? `+${team.dif}` : team.dif}</span>
+                          <span className="text-sm font-bold text-primary text-center w-8">{team.pts}</span>
+                        </div>
+                      );
+                    })}
+
+                    {!isConfirmed && (
+                      <div className="p-3 bg-muted/10 border-t border-border flex flex-col sm:flex-row gap-3 items-center justify-between">
+                        <div className="flex gap-2">
+                          {group.equipos.map((t, ti) => (
+                            <div key={t.equipo} className="flex gap-1">
+                              <button onClick={() => moveUp(gi, ti)} disabled={ti === 0} className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-primary hover:text-white disabled:opacity-20"><ArrowUp className="w-3 h-3"/></button>
+                              <button onClick={() => moveDown(gi, ti)} disabled={ti === 3} className="w-5 h-5 flex items-center justify-center rounded bg-muted hover:bg-primary hover:text-white disabled:opacity-20"><ArrowDown className="w-3 h-3"/></button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => handleConfirmGroup(group.grupo, group.equipos)}
+                          disabled={!isFinished || isConfirming === group.grupo}
+                          className="px-4 py-2 bg-secondary text-white font-bold text-xs rounded-lg hover:bg-secondary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isConfirming === group.grupo ? <Loader2 className="w-4 h-4 animate-spin"/> : <Check className="w-4 h-4"/>}
+                          Confirmar Grupo
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

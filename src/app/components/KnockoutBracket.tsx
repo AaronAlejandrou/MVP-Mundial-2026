@@ -10,12 +10,14 @@ const TOTAL_H = SLOT * 8;
 
 function isPlaceholder(t: string) { return /^[WL]\d|^[1-4]º/.test(t); }
 
-function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick }: {
+function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, prediction }: {
   m: MInfo;
   resolveTeam: (id: number, s: 'team1' | 'team2', fb: string) => string;
   isFinal?: boolean;
   isThird?: boolean;
   onClick?: (m: MInfo) => void;
+  result?: any;
+  prediction?: any;
 }) {
   const rt1 = resolveTeam(m.id, 'team1', m.t1);
   const rt2 = resolveTeam(m.id, 'team2', m.t2);
@@ -26,7 +28,7 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick }: {
     ? "border-accent shadow-accent/20 border-2"
     : isThird
     ? "border-secondary/50 shadow-secondary/10 border-2"
-    : "border-border shadow-sm border";
+    : "border-border shadow-sm border relative overflow-hidden";
 
   const headerBgClass = isFinal
     ? "bg-accent text-accent-foreground"
@@ -34,10 +36,12 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick }: {
     ? "bg-secondary/10 text-secondary"
     : "bg-muted/30 text-muted-foreground";
 
+  const isFinished = result && result.estado === 'finalizado';
+  
   return (
     <div 
       onClick={() => onClick && onClick(m)}
-      className={`w-full rounded-md overflow-hidden bg-white ${containerClass} ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
+      className={`w-full rounded-md bg-white ${containerClass} ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
     >
       <div className={`px-1.5 py-1 flex items-center justify-between ${headerBgClass}`}>
         <div className="flex items-center gap-1">
@@ -45,16 +49,23 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick }: {
           {isThird && <Award className="w-3 h-3 flex-shrink-0" />}
           <span className="text-[8px] xl:text-[9px] font-bold">#{m.num}</span>
         </div>
-        <span className="text-[7.5px] xl:text-[8px] font-medium truncate ml-1 opacity-90">
-          {m.date} {m.time}
-        </span>
+        <div className="flex items-center gap-1">
+          {prediction?.puntos_obtenidos !== undefined && isFinished && (
+            <span className={`text-[8px] font-bold px-1 rounded-sm ${prediction.puntos_obtenidos === 5 ? 'bg-accent/20 text-accent' : prediction.puntos_obtenidos > 0 ? 'bg-secondary/20 text-secondary' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
+              +{prediction.puntos_obtenidos}
+            </span>
+          )}
+          <span className="text-[7.5px] xl:text-[8px] font-medium truncate opacity-90">
+            {m.date}
+          </span>
+        </div>
       </div>
-      <div className="p-1 xl:p-1.5 space-y-1">
+      <div className="p-1 xl:p-1.5 space-y-1 relative">
         {[
-          { team: rt1, ph: ph1 },
-          { team: rt2, ph: ph2 },
+          { team: rt1, ph: ph1, rG: result?.golesA, pG: prediction?.goles_a },
+          { team: rt2, ph: ph2, rG: result?.golesB, pG: prediction?.goles_b },
         ].map((r, idx) => (
-          <div key={idx} className="flex items-center gap-1 xl:gap-1.5">
+          <div key={idx} className="flex items-center gap-1 xl:gap-1.5 h-[18px]">
             {!r.ph ? (
               <CountryFlag country={r.team} size="xs" />
             ) : (
@@ -63,8 +74,21 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick }: {
             <span className={`text-[8px] xl:text-[9.5px] flex-1 truncate ${r.ph ? 'text-muted-foreground italic' : 'font-bold text-foreground'}`}>
               {r.team}
             </span>
-            <div className="w-4 h-4 bg-muted rounded flex items-center justify-center flex-shrink-0">
-              <span className="text-[8px] font-bold text-muted-foreground">-</span>
+            
+            {/* Contenedor de scores */}
+            <div className="flex items-center gap-0.5 justify-end w-12 flex-shrink-0">
+              {/* Pronostico (subliminal) */}
+              {r.pG !== undefined && (
+                <span className={`text-[7px] font-bold w-4 text-center ${isFinished ? 'text-primary/40' : 'text-primary'}`}>
+                  {r.pG}
+                </span>
+              )}
+              {/* Resultado real */}
+              <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${isFinished ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>
+                <span className="text-[8px] font-bold">
+                  {isFinished ? r.rG : '-'}
+                </span>
+              </div>
             </div>
           </div>
         ))}
@@ -73,11 +97,13 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick }: {
   );
 }
 
-function BracketCol({ matches, level, label, resolveTeam, isRightSide, onMatchClick }: {
+function BracketCol({ matches, level, label, resolveTeam, isRightSide, onMatchClick, predictions, matchResults }: {
   matches: MInfo[]; level: number; label: string;
   resolveTeam: (id: number, s: 'team1' | 'team2', fb: string) => string;
   isRightSide?: boolean;
   onMatchClick?: (m: MInfo) => void;
+  predictions?: Record<number, any>;
+  matchResults?: Record<number, any>;
 }) {
   const slotH = SLOT * Math.pow(2, level);
   let drawLeft = false;
@@ -101,16 +127,18 @@ function BracketCol({ matches, level, label, resolveTeam, isRightSide, onMatchCl
         <div key={m.id} style={{ height: slotH }} className="flex items-center justify-center w-full relative group">
           {drawLeft && <div className="absolute left-[-4px] w-1 xl:w-2 h-px bg-border/80 -z-10 group-hover:bg-primary/50" />}
           {drawRight && <div className="absolute right-[-4px] w-1 xl:w-2 h-px bg-border/80 -z-10 group-hover:bg-primary/50" />}
-          <BracketMatch m={m} resolveTeam={resolveTeam} onClick={onMatchClick} />
+          <BracketMatch m={m} resolveTeam={resolveTeam} onClick={onMatchClick} result={matchResults?.[m.id]} prediction={predictions?.[m.id]} />
         </div>
       ))}
     </div>
   );
 }
 
-function MobileView({ resolveTeam, onMatchClick }: { 
+function MobileView({ resolveTeam, onMatchClick, predictions, matchResults }: { 
   resolveTeam: (id: number, s: 'team1' | 'team2', fb: string) => string;
   onMatchClick?: (m: MInfo) => void;
+  predictions?: Record<number, any>;
+  matchResults?: Record<number, any>;
 }) {
   const [open, setOpen] = useState<number[]>([0, 5]);
   const toggle = (i: number) => setOpen(p => p.includes(i) ? p.filter(x => x !== i) : [...p, i]);
@@ -134,7 +162,7 @@ function MobileView({ resolveTeam, onMatchClick }: {
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white">
               {ph.matches.map(m => (
                 <div key={m.id} className="flex justify-center w-full max-w-[240px] mx-auto">
-                  <BracketMatch m={m} resolveTeam={resolveTeam} isFinal={ph.isFinal} isThird={ph.isThird} onClick={onMatchClick} />
+                  <BracketMatch m={m} resolveTeam={resolveTeam} isFinal={ph.isFinal} isThird={ph.isThird} onClick={onMatchClick} result={matchResults?.[m.id]} prediction={predictions?.[m.id]} />
                 </div>
               ))}
             </div>
@@ -148,10 +176,12 @@ function MobileView({ resolveTeam, onMatchClick }: {
 export function KnockoutBracket({ 
   leagueId,
   predictions,
+  matchResults,
   onSavePrediction 
 }: { 
   leagueId?: string;
   predictions?: Record<number, any>;
+  matchResults?: Record<number, any>;
   onSavePrediction?: (matchId: number, golesA: number, golesB: number) => Promise<void>;
 }) {
   const [bracketLocked, setBracketLocked] = useState(false);
@@ -169,11 +199,10 @@ export function KnockoutBracket({
         const pr = await apiFetch(`/bracket/phase?leagueId=${leagueId}`);
         if (pr.ok) {
           const phase = await pr.json();
-          setBracketLocked(phase.bracketLocked);
-          if (phase.bracketLocked) {
-            const tr = await apiFetch(`/bracket/knockout-teams?leagueId=${leagueId}`);
-            if (tr.ok) setKnockoutTeams((await tr.json()).teams ?? {});
-          }
+          // Ahora leemos a partir del historial parcial si confirmGroups tiene avance
+          setBracketLocked(phase.bracketLocked || phase.confirmedGroups?.length > 0);
+          const tr = await apiFetch(`/bracket/knockout-teams?leagueId=${leagueId}`);
+          if (tr.ok) setKnockoutTeams((await tr.json()).teams ?? {});
         }
       } catch { /* silent */ }
       setIsLoading(false);
@@ -183,8 +212,7 @@ export function KnockoutBracket({
   const resolveTeam = (id: number, s: 'team1' | 'team2', fb: string) => knockoutTeams[id]?.[s] ?? fb;
 
   const handleMatchClick = (m: MInfo) => {
-    // Only allow clicking if bracket is locked and teams are resolved
-    if (!bracketLocked) return;
+    // Only allow clicking if teams are resolved
     const t1 = resolveTeam(m.id, 'team1', m.t1);
     const t2 = resolveTeam(m.id, 'team2', m.t2);
     if (isPlaceholder(t1) || isPlaceholder(t2)) return;
@@ -196,6 +224,13 @@ export function KnockoutBracket({
   };
 
   const selectedFullMatch = selectedMatchInfo ? getFullMatchFromMInfo(selectedMatchInfo) : null;
+  // Mix real result into the full match for the modal
+  const enrichedSelectedMatch = selectedFullMatch ? {
+    ...selectedFullMatch,
+    goles_a: matchResults?.[selectedFullMatch.id]?.golesA ?? null,
+    goles_b: matchResults?.[selectedFullMatch.id]?.golesB ?? null,
+    estado: matchResults?.[selectedFullMatch.id]?.estado ?? 'pendiente',
+  } : null;
 
   return (
     <div className="space-y-4 lg:space-y-6 w-full relative">
@@ -213,11 +248,11 @@ export function KnockoutBracket({
 
       {!isLoading && leagueId && (
         <div className="px-4 flex justify-center">
-          <div className={`max-w-xl w-full flex items-center gap-3 px-4 py-2 rounded-xl border ${bracketLocked ? 'bg-secondary/10 border-secondary/30' : 'bg-muted border-border'}`}>
-            <Lock className={`w-4 h-4 flex-shrink-0 ${bracketLocked ? 'text-secondary' : 'text-muted-foreground'}`} />
+          <div className="max-w-xl w-full flex items-center gap-3 px-4 py-2 rounded-xl border bg-secondary/10 border-secondary/30">
+            <Lock className="w-4 h-4 flex-shrink-0 text-secondary" />
             <div>
-              <p className={`text-xs font-bold ${bracketLocked ? 'text-secondary' : 'text-foreground'}`}>
-                {bracketLocked ? 'Bracket confirmado. ¡Haz clic en los partidos para pronosticar!' : 'Bracket pendiente'}
+              <p className="text-xs font-bold text-secondary">
+                ¡Haz clic en los partidos con equipos confirmados para pronosticar!
               </p>
             </div>
           </div>
@@ -231,10 +266,10 @@ export function KnockoutBracket({
               {[1,2,3,4,5,6,7].map(i => <div key={i} className="h-full border-l border-border" />)}
             </div>
 
-            {/* Col 1 */} <BracketCol matches={R32_L} level={0} label="16AVOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} />
-            {/* Col 2 */} <BracketCol matches={R16_L} level={1} label="OCTAVOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} />
-            {/* Col 3 */} <BracketCol matches={QF_L}  level={2} label="CUARTOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} />
-            {/* Col 4 */} <BracketCol matches={SF_L}  level={3} label="SEMIS"   resolveTeam={resolveTeam} onMatchClick={handleMatchClick} />
+            {/* Col 1 */} <BracketCol matches={R32_L} level={0} label="16AVOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+            {/* Col 2 */} <BracketCol matches={R16_L} level={1} label="OCTAVOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+            {/* Col 3 */} <BracketCol matches={QF_L}  level={2} label="CUARTOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+            {/* Col 4 */} <BracketCol matches={SF_L}  level={3} label="SEMIS"   resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
 
             {/* Col 5: CENTER */}
             <div className="flex flex-col items-center justify-center relative w-full h-full" style={{ height: TOTAL_H + 32 }}>
@@ -246,7 +281,7 @@ export function KnockoutBracket({
                     <Trophy className="w-3.5 h-3.5 text-accent" />
                     <span className="text-[9px] xl:text-[10px] font-extrabold tracking-widest text-accent uppercase">Final</span>
                   </div>
-                  <BracketMatch m={FINAL} resolveTeam={resolveTeam} isFinal onClick={handleMatchClick} />
+                  <BracketMatch m={FINAL} resolveTeam={resolveTeam} isFinal onClick={handleMatchClick} result={matchResults?.[FINAL.id]} prediction={predictions?.[FINAL.id]} />
                 </div>
               </div>
 
@@ -255,25 +290,25 @@ export function KnockoutBracket({
                   <Award className="w-3 h-3 text-secondary" />
                   <span className="text-[8px] xl:text-[9px] font-bold tracking-widest text-secondary uppercase">3er Lugar</span>
                 </div>
-                <BracketMatch m={THIRD} resolveTeam={resolveTeam} isThird onClick={handleMatchClick} />
+                <BracketMatch m={THIRD} resolveTeam={resolveTeam} isThird onClick={handleMatchClick} result={matchResults?.[THIRD.id]} prediction={predictions?.[THIRD.id]} />
               </div>
             </div>
 
-            {/* Col 6 */} <BracketCol matches={SF_R}  level={3} label="SEMIS"   resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} />
-            {/* Col 7 */} <BracketCol matches={QF_R}  level={2} label="CUARTOS" resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} />
-            {/* Col 8 */} <BracketCol matches={R16_R} level={1} label="OCTAVOS" resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} />
-            {/* Col 9 */} <BracketCol matches={R32_R} level={0} label="16AVOS"  resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} />
+            {/* Col 6 */} <BracketCol matches={SF_R}  level={3} label="SEMIS"   resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+            {/* Col 7 */} <BracketCol matches={QF_R}  level={2} label="CUARTOS" resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+            {/* Col 8 */} <BracketCol matches={R16_R} level={1} label="OCTAVOS" resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+            {/* Col 9 */} <BracketCol matches={R32_R} level={0} label="16AVOS"  resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
           </div>
         </div>
       </div>
 
       <div className="xl:hidden w-full max-w-3xl mx-auto pb-8">
-        <MobileView resolveTeam={resolveTeam} onMatchClick={handleMatchClick} />
+        <MobileView resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
       </div>
 
       {/* Prediction Modal */}
-      {selectedMatchInfo && selectedFullMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      {selectedMatchInfo && enrichedSelectedMatch && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-background rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative">
             <button 
               onClick={() => setSelectedMatchInfo(null)}
@@ -283,11 +318,11 @@ export function KnockoutBracket({
             </button>
             <div className="p-6 pt-10">
               <h3 className="text-xl font-bold text-center mb-6 text-foreground">
-                Pronosticar {selectedFullMatch.grupo}
+                Pronosticar {enrichedSelectedMatch.grupo}
               </h3>
               <MatchCard 
-                match={selectedFullMatch}
-                prediction={predictions?.[selectedFullMatch.id]}
+                match={enrichedSelectedMatch as any}
+                prediction={predictions?.[enrichedSelectedMatch.id]}
                 onSavePrediction={onSavePrediction}
               />
             </div>
