@@ -507,8 +507,8 @@ app.post("/make-server-49810636/bracket/confirm-group", requireAuth, async (c) =
       } else {
         await db.from("knockout_match_teams").insert({
           league_id: leagueId, match_id: update.m, 
-          team1: update.s === 'team1' ? update.v : null,
-          team2: update.s === 'team2' ? update.v : null
+          team1: update.s === 'team1' ? update.v : "",
+          team2: update.s === 'team2' ? update.v : ""
         });
       }
     }
@@ -544,7 +544,7 @@ app.post("/make-server-49810636/bracket/confirm-thirds", requireAuth, async (c) 
       } else {
         await db.from("knockout_match_teams").insert({
           league_id: leagueId, match_id: update.m, 
-          team1: null, team2: update.v
+          team1: "", team2: update.v
         });
       }
     }
@@ -598,6 +598,60 @@ app.get("/make-server-49810636/bracket/group-standings-final", async (c) => {
     const standings = Object.entries(grouped).map(([grupo, equipos]) => ({ grupo, equipos }));
     return c.json({ standings });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
+
+app.get("/make-server-49810636/bracket/fix-knockout", async (c) => {
+  try {
+    const db = getDb();
+    const { data: rows } = await db.from("group_standings_final").select("*");
+    if (!rows || rows.length === 0) return c.json({ error: "No rows", rows });
+
+    const byLeague: Record<string, Record<string, any[]>> = {};
+    for (const r of rows) {
+      if (!byLeague[r.league_id]) byLeague[r.league_id] = {};
+      if (!byLeague[r.league_id][r.grupo]) byLeague[r.league_id][r.grupo] = [];
+      byLeague[r.league_id][r.grupo].push(r);
+    }
+
+    const updates = [];
+    for (const [leagueId, grouped] of Object.entries(byLeague)) {
+      for (const [grupo, equipos] of Object.entries(grouped)) {
+        equipos.sort((a,b) => a.posicion - b.posicion);
+        const getPos = (pos: number) => equipos[pos - 1]?.equipo ?? `${pos}º${grupo}`;
+        const t1 = getPos(1);
+        const t2 = getPos(2);
+
+        const matchUpdates = [];
+        if (grupo === 'A') { matchUpdates.push({ m:73, s:'team1', v:t2 }, { m:79, s:'team1', v:t1 }); }
+        if (grupo === 'B') { matchUpdates.push({ m:73, s:'team2', v:t2 }, { m:85, s:'team1', v:t1 }); }
+        if (grupo === 'C') { matchUpdates.push({ m:75, s:'team2', v:t2 }, { m:76, s:'team1', v:t1 }); }
+        if (grupo === 'D') { matchUpdates.push({ m:81, s:'team1', v:t1 }, { m:88, s:'team1', v:t2 }); }
+        if (grupo === 'E') { matchUpdates.push({ m:74, s:'team1', v:t1 }, { m:78, s:'team1', v:t2 }); }
+        if (grupo === 'F') { matchUpdates.push({ m:75, s:'team1', v:t1 }, { m:76, s:'team2', v:t2 }); }
+        if (grupo === 'G') { matchUpdates.push({ m:82, s:'team1', v:t1 }, { m:88, s:'team2', v:t2 }); }
+        if (grupo === 'H') { matchUpdates.push({ m:84, s:'team1', v:t1 }, { m:86, s:'team2', v:t2 }); }
+        if (grupo === 'I') { matchUpdates.push({ m:77, s:'team1', v:t1 }, { m:78, s:'team2', v:t2 }); }
+        if (grupo === 'J') { matchUpdates.push({ m:84, s:'team2', v:t2 }, { m:86, s:'team1', v:t1 }); }
+        if (grupo === 'K') { matchUpdates.push({ m:83, s:'team1', v:t2 }, { m:87, s:'team1', v:t1 }); }
+        if (grupo === 'L') { matchUpdates.push({ m:80, s:'team1', v:t1 }, { m:83, s:'team2', v:t2 }); }
+
+        for (const update of matchUpdates) {
+          const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", update.m).maybeSingle();
+          if (ext) {
+            await db.from("knockout_match_teams").update({ [update.s]: update.v }).eq("league_id", leagueId).eq("match_id", update.m);
+          } else {
+            await db.from("knockout_match_teams").insert({
+              league_id: leagueId, match_id: update.m, 
+              team1: update.s === 'team1' ? update.v : "",
+              team2: update.s === 'team2' ? update.v : ""
+            });
+          }
+        }
+      }
+      updates.push({ leagueId, grupos: Object.keys(grouped) });
+    }
+    return c.json({ fixed: true, updates });
+  } catch(err) { return c.json({ error: String(err) }, 500); }
 });
 
 // ── Cálculo de puntos ─────────────────────────────────────────────────────────

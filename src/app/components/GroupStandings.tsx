@@ -26,6 +26,9 @@ export function GroupStandings({
     const gruposMap: Record<string, Record<string, any>> = {};
 
     matches.forEach(m => {
+      // Solo considerar grupos de la primera fase (A-L)
+      if (!/^[A-L]$/.test(m.grupo)) return;
+
       if (!gruposMap[m.grupo]) gruposMap[m.grupo] = {};
       if (!gruposMap[m.grupo][m.equipo_a]) {
         gruposMap[m.grupo][m.equipo_a] = { equipo: m.equipo_a, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dif: 0, pts: 0 };
