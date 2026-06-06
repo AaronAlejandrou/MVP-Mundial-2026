@@ -102,8 +102,8 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
                 </>
               )}
             </button>
-            <span className="text-[10px] text-slate-400 font-medium mr-1">
-              Código: <span className="font-mono font-bold text-slate-600">{currentLeague.invitationCode || currentLeague.codigo_invitacion}</span>
+            <span className="text-xs text-muted-foreground font-medium mr-1">
+              Código: <span className="font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded-md border border-border">{currentLeague.invitationCode || currentLeague.codigo_invitacion}</span>
             </span>
           </div>
         )}
