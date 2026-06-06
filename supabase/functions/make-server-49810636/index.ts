@@ -210,6 +210,31 @@ app.get("/make-server-49810636/matches/results", async (c) => {
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
 
+const NEXT_MATCH_MAP: Record<number, { match: number, slot: 'team1' | 'team2' }> = {
+  74: { match: 89, slot: 'team1' }, 77: { match: 89, slot: 'team2' },
+  73: { match: 90, slot: 'team1' }, 75: { match: 90, slot: 'team2' },
+  83: { match: 93, slot: 'team1' }, 84: { match: 93, slot: 'team2' },
+  81: { match: 94, slot: 'team1' }, 82: { match: 94, slot: 'team2' },
+  76: { match: 91, slot: 'team1' }, 78: { match: 91, slot: 'team2' },
+  79: { match: 92, slot: 'team1' }, 80: { match: 92, slot: 'team2' },
+  86: { match: 95, slot: 'team1' }, 88: { match: 95, slot: 'team2' },
+  85: { match: 96, slot: 'team1' }, 87: { match: 96, slot: 'team2' },
+  
+  89: { match: 97, slot: 'team1' }, 90: { match: 97, slot: 'team2' },
+  93: { match: 98, slot: 'team1' }, 94: { match: 98, slot: 'team2' },
+  
+  91: { match: 99, slot: 'team1' }, 92: { match: 99, slot: 'team2' },
+  95: { match: 100, slot: 'team1' }, 96: { match: 100, slot: 'team2' },
+  
+  97: { match: 101, slot: 'team1' }, 98: { match: 101, slot: 'team2' },
+  99: { match: 102, slot: 'team1' }, 100: { match: 102, slot: 'team2' },
+  
+  101: { match: 104, slot: 'team1' }, 102: { match: 104, slot: 'team2' },
+};
+const LOSER_MAP: Record<number, { match: number, slot: 'team1' | 'team2' }> = {
+  101: { match: 103, slot: 'team1' }, 102: { match: 103, slot: 'team2' },
+};
+
 app.post("/make-server-49810636/matches/:matchId/result", requireAuth, async (c) => {
   try {
     const user = c.get("user");
@@ -220,7 +245,34 @@ app.post("/make-server-49810636/matches/:matchId/result", requireAuth, async (c)
     if (!league) return c.json({ error: "Liga no encontrada" }, 404);
     if (league.admin_id !== user.id) return c.json({ error: "Solo el admin" }, 403);
     await db.from("match_results").upsert({ match_id:matchId, league_id:leagueId, goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() });
-    if (estado === "finalizado") await calculatePoints(matchId, leagueId, golesA, golesB);
+    if (estado === "finalizado") {
+      await calculatePoints(matchId, leagueId, golesA, golesB);
+      
+      // Auto-advance knockout winners
+      if (matchId >= 73) {
+        const { data: mt } = await db.from("knockout_match_teams").select("team1, team2").eq("league_id", leagueId).eq("match_id", matchId).maybeSingle();
+        if (mt) {
+          let winner = ""; let loser = "";
+          if (golesA > golesB) { winner = mt.team1; loser = mt.team2; }
+          else if (golesB > golesA) { winner = mt.team2; loser = mt.team1; }
+          
+          if (winner) {
+            const nextW = NEXT_MATCH_MAP[matchId];
+            if (nextW) {
+              const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", nextW.match).maybeSingle();
+              if (ext) await db.from("knockout_match_teams").update({ [nextW.slot]: winner }).eq("league_id", leagueId).eq("match_id", nextW.match);
+              else await db.from("knockout_match_teams").insert({ league_id: leagueId, match_id: nextW.match, team1: nextW.slot === 'team1' ? winner : "", team2: nextW.slot === 'team2' ? winner : "" });
+            }
+            const nextL = LOSER_MAP[matchId];
+            if (nextL && loser) {
+              const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", nextL.match).maybeSingle();
+              if (ext) await db.from("knockout_match_teams").update({ [nextL.slot]: loser }).eq("league_id", leagueId).eq("match_id", nextL.match);
+              else await db.from("knockout_match_teams").insert({ league_id: leagueId, match_id: nextL.match, team1: nextL.slot === 'team1' ? loser : "", team2: nextL.slot === 'team2' ? loser : "" });
+            }
+          }
+        }
+      }
+    }
     return c.json({ message: "Resultado actualizado" });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });

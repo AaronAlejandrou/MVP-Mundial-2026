@@ -12,9 +12,10 @@ interface AdminPanelProps {
   onResultUpdated?: () => void;
   onApproveUser?: (userId: string, approved: boolean) => Promise<void>;
   pendingUsers?: any[];
+  baseMatches: any[];
 }
 
-export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onApproveUser, pendingUsers: externalPending }: AdminPanelProps) {
+export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onApproveUser, pendingUsers: externalPending, baseMatches }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<'results' | 'approvals' | 'bracket'>('results');
   const [pendingUsers, setPendingUsers] = useState<any[]>(externalPending || []);
   const [matchResults, setMatchResults] = useState<Record<number, any>>({});
@@ -196,6 +197,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
               matchResults={matchResults}
               onUpdateResult={handleUpdateResult}
               isLoading={isLoading}
+              baseMatches={baseMatches}
             />
           )}
 
@@ -223,7 +225,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
   );
 }
 
-function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
+function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches }: any) {
   const [editingMatch, setEditingMatch] = useState<number | null>(null);
   const [golesA, setGolesA] = useState(0);
   const [golesB, setGolesB] = useState(0);
@@ -249,7 +251,9 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
     return { label: 'Pendiente', class: 'bg-muted text-muted-foreground' };
   };
 
-  const filteredMatches = GROUP_STAGE_MATCHES.filter(m => {
+  const matchesToFilter = baseMatches || GROUP_STAGE_MATCHES;
+
+  const filteredMatches = matchesToFilter.filter(m => {
     if (filterGrupo !== 'todos' && m.grupo !== filterGrupo) return false;
     if (filterEstado === 'todos') return true;
     const result = matchResults[m.id];
@@ -257,7 +261,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
     return !result || result.estado !== 'finalizado';
   });
 
-  const matchesByGroup: Record<string, typeof GROUP_STAGE_MATCHES> = {};
+  const matchesByGroup: Record<string, typeof matchesToFilter> = {};
   filteredMatches.forEach(m => {
     if (!matchesByGroup[m.grupo]) matchesByGroup[m.grupo] = [];
     matchesByGroup[m.grupo].push(m);
@@ -270,7 +274,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="bg-muted rounded-lg p-3">
-          <div className="text-2xl font-bold text-foreground">{GROUP_STAGE_MATCHES.length}</div>
+          <div className="text-2xl font-bold text-foreground">{matchesToFilter.length}</div>
           <div className="text-xs text-muted-foreground font-medium">Total partidos</div>
         </div>
         <div className="bg-secondary/10 rounded-lg p-3">
@@ -278,7 +282,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
           <div className="text-xs text-muted-foreground font-medium">Finalizados</div>
         </div>
         <div className="bg-primary/10 rounded-lg p-3">
-          <div className="text-2xl font-bold text-primary">{GROUP_STAGE_MATCHES.length - finalizados}</div>
+          <div className="text-2xl font-bold text-primary">{matchesToFilter.length - finalizados}</div>
           <div className="text-xs text-muted-foreground font-medium">Pendientes</div>
         </div>
       </div>

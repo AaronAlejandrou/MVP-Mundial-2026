@@ -456,6 +456,8 @@ export default function App() {
           onResultUpdated={loadUserData}
           onApproveUser={handleApproveUser}
           pendingUsers={pendingApprovals}
+          matchResults={matchResults}
+          baseMatches={baseMatches}
         />
       )}
 
