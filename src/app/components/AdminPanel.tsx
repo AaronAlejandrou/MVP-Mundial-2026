@@ -328,24 +328,18 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
                 </div>
 
                 {isEditing ? (
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <input
-                      type="number"
-                      min="0"
-                      max="20"
-                      value={golesA}
-                      onChange={(e) => setGolesA(parseInt(e.target.value) || 0)}
-                      className="w-14 px-2 py-1.5 text-center border-2 border-primary rounded-lg font-bold text-lg"
-                    />
-                    <span className="font-bold text-muted-foreground">-</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="20"
-                      value={golesB}
-                      onChange={(e) => setGolesB(parseInt(e.target.value) || 0)}
-                      className="w-14 px-2 py-1.5 text-center border-2 border-primary rounded-lg font-bold text-lg"
-                    />
+                  <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setGolesA(Math.max(0, golesA - 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive text-xl font-bold transition-colors hover:text-destructive-foreground">-</button>
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-primary rounded-lg font-bold text-xl sm:text-2xl bg-card text-foreground">{golesA}</div>
+                      <button onClick={() => setGolesA(Math.min(20, golesA + 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary text-xl font-bold transition-colors hover:text-primary-foreground">+</button>
+                    </div>
+                    <span className="font-bold text-muted-foreground hidden sm:block">-</span>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setGolesB(Math.max(0, golesB - 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive text-xl font-bold transition-colors hover:text-destructive-foreground">-</button>
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-primary rounded-lg font-bold text-xl sm:text-2xl bg-card text-foreground">{golesB}</div>
+                      <button onClick={() => setGolesB(Math.min(20, golesB + 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary text-xl font-bold transition-colors hover:text-primary-foreground">+</button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 flex-shrink-0">

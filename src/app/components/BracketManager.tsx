@@ -267,10 +267,15 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
             </div>
           </div>
           <div className="p-4 bg-accent/5">
-            <p className="text-sm text-muted-foreground mb-4">
-              Todos los grupos han sido confirmados. Ahora debes seleccionar y ordenar a los 8 mejores terceros.
-              El orden es importante porque define contra qué 1er lugar juegan. Usa las flechas para resolver empates manualmente (ej. Fair Play o Sorteo).
-            </p>
+            <div className="mb-4 bg-accent/10 border-l-4 border-accent p-3 rounded-r-lg">
+              <h4 className="font-bold text-accent mb-1 text-sm">¿Cómo funciona esta etapa?</h4>
+              <p className="text-sm text-muted-foreground">
+                El sistema ya ha <strong>calculado y ordenado automáticamente</strong> a todos los terceros lugares basándose en Puntos, Diferencia de Goles y Goles a Favor.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                <strong>¿Qué debes hacer?</strong> Solo revisa la lista. Únicamente si ocurrió un empate absoluto (donde la FIFA tuvo que usar Fair Play o Sorteo para desempatar), usa las flechas <ArrowUp className="w-3 h-3 inline"/> <ArrowDown className="w-3 h-3 inline"/> para ajustar el orden final. De lo contrario, simplemente haz clic en confirmar abajo.
+              </p>
+            </div>
             
             <div className="space-y-2 bg-card rounded-lg border border-border p-2">
               {thirds.map((t: any, i) => {

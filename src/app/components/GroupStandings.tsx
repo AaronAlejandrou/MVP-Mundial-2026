@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { GroupTable } from './GroupTable';
-import { GROUP_STANDINGS } from '../../data/groupStandingsData';
 import { List, Grid3x3, Calendar } from 'lucide-react';
 import { MatchCard } from './MatchCard';
 
@@ -23,10 +22,48 @@ export function GroupStandings({
 }: GroupStandingsProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  const dynamicStandings = useMemo(() => {
+    const gruposMap: Record<string, Record<string, any>> = {};
+
+    matches.forEach(m => {
+      if (!gruposMap[m.grupo]) gruposMap[m.grupo] = {};
+      if (!gruposMap[m.grupo][m.equipo_a]) {
+        gruposMap[m.grupo][m.equipo_a] = { equipo: m.equipo_a, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dif: 0, pts: 0 };
+      }
+      if (!gruposMap[m.grupo][m.equipo_b]) {
+        gruposMap[m.grupo][m.equipo_b] = { equipo: m.equipo_b, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dif: 0, pts: 0 };
+      }
+
+      if (m.estado === 'finalizado' && m.goles_a !== null && m.goles_b !== null) {
+        const tA = gruposMap[m.grupo][m.equipo_a];
+        const tB = gruposMap[m.grupo][m.equipo_b];
+        const ga = m.goles_a;
+        const gb = m.goles_b;
+
+        tA.pj++; tB.pj++;
+        tA.gf += ga; tA.gc += gb; tA.dif = tA.gf - tA.gc;
+        tB.gf += gb; tB.gc += ga; tB.dif = tB.gf - tB.gc;
+
+        if (ga > gb) { tA.pg++; tA.pts += 3; tB.pp++; }
+        else if (gb > ga) { tB.pg++; tB.pts += 3; tA.pp++; }
+        else { tA.pe++; tB.pe++; tA.pts += 1; tB.pts += 1; }
+      }
+    });
+
+    return Object.keys(gruposMap).sort().map(grupo => {
+      const equipos = Object.values(gruposMap[grupo]).sort((a: any, b: any) => {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        if (b.dif !== a.dif) return b.dif - a.dif;
+        return b.gf - a.gf;
+      });
+      return { grupo, equipos };
+    });
+  }, [matches]);
+
   // Si hay un grupo seleccionado, mostrar solo ese grupo
   const groupsToShow = selectedGroup
-    ? GROUP_STANDINGS.filter(g => g.grupo === selectedGroup)
-    : GROUP_STANDINGS;
+    ? dynamicStandings.filter(g => g.grupo === selectedGroup)
+    : dynamicStandings;
 
   const groupMatches = selectedGroup 
     ? matches.filter(m => m.grupo === selectedGroup)
