@@ -520,22 +520,17 @@ app.post("/make-server-49810636/bracket/confirm-group", requireAuth, async (c) =
 app.post("/make-server-49810636/bracket/confirm-thirds", requireAuth, async (c) => {
   try {
     const user = c.get("user");
-    const { leagueId, bestThirds } = await c.req.json();
-    if (!leagueId || !bestThirds || bestThirds.length !== 8) return c.json({ error: "Faltan los 8 terceros" }, 400);
+    const { leagueId, thirdMappings } = await c.req.json();
+    if (!leagueId || !thirdMappings || Object.keys(thirdMappings).length !== 8) return c.json({ error: "Faltan los mapeos de los 8 terceros" }, 400);
     const db = getDb();
     const { data: league } = await db.from("leagues").select("admin_id").eq("id", leagueId).maybeSingle();
     if (!league || league.admin_id !== user.id) return c.json({ error: "No autorizado" }, 403);
 
-    const thirdUpdates = [
-      { m:74, s:'team2', v:bestThirds[0] },
-      { m:77, s:'team2', v:bestThirds[1] },
-      { m:79, s:'team2', v:bestThirds[2] },
-      { m:80, s:'team2', v:bestThirds[3] },
-      { m:81, s:'team2', v:bestThirds[4] },
-      { m:82, s:'team2', v:bestThirds[5] },
-      { m:85, s:'team2', v:bestThirds[6] },
-      { m:87, s:'team2', v:bestThirds[7] },
-    ];
+    const thirdUpdates = Object.entries(thirdMappings).map(([matchId, teamName]) => ({
+      m: parseInt(matchId),
+      s: 'team2',
+      v: teamName
+    }));
 
     for (const update of thirdUpdates) {
       const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", update.m).maybeSingle();

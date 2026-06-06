@@ -37,6 +37,19 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
   // Para los terceros
   const [thirds, setThirds] = useState<TeamStat[]>([]);
 
+  // Mapeos explícitos para los terceros lugares
+  const MATCHES_REQUIRING_THIRDS = [
+    { id: 74, vs: '1º Grupo E' },
+    { id: 77, vs: '1º Grupo I' },
+    { id: 79, vs: '1º Grupo A' },
+    { id: 80, vs: '1º Grupo L' },
+    { id: 81, vs: '1º Grupo D' },
+    { id: 82, vs: '1º Grupo G' },
+    { id: 85, vs: '1º Grupo B' },
+    { id: 87, vs: '1º Grupo K' },
+  ];
+  const [thirdMappings, setThirdMappings] = useState<Record<number, string>>({});
+
   const loadPhase = useCallback(async () => {
     try {
       const res = await apiFetch(`/bracket/phase?leagueId=${league.id}`);
@@ -189,11 +202,23 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
     setIsConfirming('thirds');
     setError(null);
     try {
-      const best8 = thirds.slice(0, 8).map(t => t.equipo);
+      // Validar que se hayan mapeado todos los terceros
+      if (Object.keys(thirdMappings).length !== 8) {
+        setError('Por favor, asigna un equipo diferente a cada uno de los 8 partidos.');
+        setIsConfirming(null);
+        return;
+      }
+      const assignedTeams = new Set(Object.values(thirdMappings));
+      if (assignedTeams.size !== 8) {
+        setError('Por favor, asegúrate de no repetir ningún equipo en los partidos.');
+        setIsConfirming(null);
+        return;
+      }
+
       const res = await apiFetch('/bracket/confirm-thirds', {
         method: 'POST',
         token: accessToken,
-        body: { leagueId: league.id, bestThirds: best8 },
+        body: { leagueId: league.id, thirdMappings },
       });
       const data = await res.json();
       if (res.ok) {
@@ -274,7 +299,9 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
                 El sistema ya ha <strong>calculado y ordenado automáticamente</strong> a todos los terceros lugares basándose en Puntos, Diferencia de Goles y Goles a Favor.
               </p>
               <p className="text-sm text-muted-foreground mt-2">
-                <strong>¿Qué debes hacer?</strong> Solo revisa la lista. Únicamente si ocurrió un empate absoluto (donde la FIFA tuvo que usar Fair Play o Sorteo para desempatar), usa las flechas <ArrowUp className="w-3 h-3 inline"/> <ArrowDown className="w-3 h-3 inline"/> para ajustar el orden final. De lo contrario, simplemente haz clic en confirmar abajo.
+                1. Revisa la lista de 12 terceros. Los 8 primeros clasifican. Si hubo empate, puedes usar las flechas <ArrowUp className="w-3 h-3 inline"/> <ArrowDown className="w-3 h-3 inline"/> para ajustar quién clasifica.
+                <br/>
+                2. Abajo, **asigna** qué tercer lugar se enfrentará a qué ganador de grupo en los octavos de final.
               </p>
             </div>
             
@@ -298,10 +325,10 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
                         {isClasificado ? 'Clasifica' : 'Eliminado'}
                       </span>
                       <div className="flex gap-1">
-                        <button onClick={() => moveThirdUp(i)} disabled={i === 0} className="w-7 h-7 flex items-center justify-center rounded bg-muted hover:bg-primary hover:text-white transition-all disabled:opacity-30">
+                        <button onClick={() => moveThirdUp(i)} disabled={i === 0} className="p-1 hover:bg-muted rounded disabled:opacity-30">
                           <ArrowUp className="w-4 h-4" />
                         </button>
-                        <button onClick={() => moveThirdDown(i)} disabled={i === thirds.length - 1} className="w-7 h-7 flex items-center justify-center rounded bg-muted hover:bg-primary hover:text-white transition-all disabled:opacity-30">
+                        <button onClick={() => moveThirdDown(i)} disabled={i === thirds.length - 1} className="p-1 hover:bg-muted rounded disabled:opacity-30">
                           <ArrowDown className="w-4 h-4" />
                         </button>
                       </div>
@@ -310,15 +337,39 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
                 );
               })}
             </div>
-            
-            <button
-              onClick={handleConfirmThirds}
-              disabled={isConfirming === 'thirds'}
-              className="mt-4 w-full py-3 bg-accent text-accent-foreground font-bold rounded-lg flex justify-center items-center gap-2 hover:bg-accent/90 shadow-md transition-all disabled:opacity-50"
-            >
-              {isConfirming === 'thirds' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5" />}
-              Confirmar Terceros y Bloquear Bracket
-            </button>
+
+            {/* Selector de Emparejamientos Manuales */}
+            <div className="mt-6">
+              <h4 className="font-bold text-accent mb-3 text-sm">Emparejamiento de Octavos (Mejores Terceros)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {MATCHES_REQUIRING_THIRDS.map(m => (
+                  <div key={m.id} className="flex flex-col gap-1 p-3 bg-card border border-border rounded-lg">
+                    <span className="text-xs font-bold text-muted-foreground">Partido {m.id} vs {m.vs}</span>
+                    <select
+                      className="text-sm p-2 bg-background border border-border rounded-md"
+                      value={thirdMappings[m.id] || ''}
+                      onChange={(e) => setThirdMappings(prev => ({ ...prev, [m.id]: e.target.value }))}
+                    >
+                      <option value="" disabled>Seleccionar clasificado...</option>
+                      {thirds.slice(0, 8).map(t => (
+                        <option key={t.equipo} value={t.equipo}>{t.equipo} (Gr. {t.grupo})</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={handleConfirmThirds}
+                disabled={isConfirming !== null}
+                className="flex items-center gap-2 px-6 py-2.5 bg-accent text-accent-foreground rounded-lg font-bold hover:bg-accent/90 transition-all disabled:opacity-50"
+              >
+                {isConfirming === 'thirds' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5" />}
+                Confirmar Terceros y Bloquear Bracket
+              </button>
+            </div>
           </div>
         </div>
       )}
