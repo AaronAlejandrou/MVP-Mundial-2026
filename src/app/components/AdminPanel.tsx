@@ -228,6 +228,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
   const [golesA, setGolesA] = useState(0);
   const [golesB, setGolesB] = useState(0);
   const [filterEstado, setFilterEstado] = useState<'todos' | 'pendiente' | 'finalizado'>('todos');
+  const [filterGrupo, setFilterGrupo] = useState<string>('todos');
 
   const startEdit = (matchId: number) => {
     const result = matchResults[matchId];
@@ -249,10 +250,17 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
   };
 
   const filteredMatches = GROUP_STAGE_MATCHES.filter(m => {
+    if (filterGrupo !== 'todos' && m.grupo !== filterGrupo) return false;
     if (filterEstado === 'todos') return true;
     const result = matchResults[m.id];
     if (filterEstado === 'finalizado') return result?.estado === 'finalizado';
     return !result || result.estado !== 'finalizado';
+  });
+
+  const matchesByGroup: Record<string, typeof GROUP_STAGE_MATCHES> = {};
+  filteredMatches.forEach(m => {
+    if (!matchesByGroup[m.grupo]) matchesByGroup[m.grupo] = [];
+    matchesByGroup[m.grupo].push(m);
   });
 
   const finalizados = Object.values(matchResults).filter((r: any) => r?.estado === 'finalizado').length;
@@ -283,125 +291,151 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-2">
-        {(['todos', 'pendiente', 'finalizado'] as const).map(f => (
-          <button
-            key={f}
-            onClick={() => setFilterEstado(f)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all capitalize ${
-              filterEstado === f
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center bg-card p-3 rounded-xl border border-border">
+        <div className="flex flex-wrap gap-2">
+          {(['todos', 'pendiente', 'finalizado'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilterEstado(f)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all capitalize ${
+                filterEstado === f
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {f === 'todos' ? 'Todos' : f === 'pendiente' ? 'Pendientes' : 'Finalizados'}
+            </button>
+          ))}
+        </div>
+        
+        <div className="w-full sm:w-auto flex items-center gap-2">
+          <span className="text-xs font-bold text-muted-foreground">Grupo:</span>
+          <select 
+            value={filterGrupo} 
+            onChange={(e) => setFilterGrupo(e.target.value)}
+            className="flex-1 sm:flex-none bg-muted text-foreground px-3 py-1.5 rounded-lg text-sm font-bold border-none outline-none cursor-pointer focus:ring-2 focus:ring-primary"
           >
-            {f === 'todos' ? 'Todos' : f === 'pendiente' ? 'Pendientes' : 'Finalizados'}
-          </button>
-        ))}
+            <option value="todos">Todos</option>
+            {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Lista de partidos */}
-      <div className="space-y-2">
-        {filteredMatches.map((match) => {
-          const result = matchResults[match.id];
-          const isEditing = editingMatch === match.id;
-          const badge = getEstadoBadge(result);
+      <div className="space-y-6 pb-4">
+        {Object.entries(matchesByGroup).map(([grupo, matches]) => (
+          <div key={grupo} className="space-y-3">
+            <h3 className="font-bold text-sm text-primary flex items-center gap-2 border-b-2 border-border/50 pb-1 mx-1">
+              GRUPO {grupo}
+            </h3>
+            
+            <div className="space-y-2">
+              {matches.map((match) => {
+                const result = matchResults[match.id];
+                const isEditing = editingMatch === match.id;
+                const badge = getEstadoBadge(result);
 
-          return (
-            <div
-              key={match.id}
-              className={`bg-card rounded-lg border-2 p-3 sm:p-4 transition-all ${
-                result?.estado === 'finalizado' ? 'border-secondary/30 bg-secondary/5' : 'border-border'
-              }`}
-            >
-              {/* Grupo y estado */}
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium">Grupo {match.grupo}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badge.class}`}>
-                  {badge.label}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <CountryFlag country={match.equipo_a} size="sm" />
-                  <span className="text-xs sm:text-sm font-bold truncate">{match.equipo_a}</span>
-                </div>
-
-                {isEditing ? (
-                  <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => setGolesA(Math.max(0, golesA - 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive text-xl font-bold transition-colors hover:text-destructive-foreground">-</button>
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-primary rounded-lg font-bold text-xl sm:text-2xl bg-card text-foreground">{golesA}</div>
-                      <button onClick={() => setGolesA(Math.min(20, golesA + 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary text-xl font-bold transition-colors hover:text-primary-foreground">+</button>
-                    </div>
-                    <span className="font-bold text-muted-foreground hidden sm:block">-</span>
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => setGolesB(Math.max(0, golesB - 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive text-xl font-bold transition-colors hover:text-destructive-foreground">-</button>
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-primary rounded-lg font-bold text-xl sm:text-2xl bg-card text-foreground">{golesB}</div>
-                      <button onClick={() => setGolesB(Math.min(20, golesB + 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary text-xl font-bold transition-colors hover:text-primary-foreground">+</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
-                      result ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {result?.golesA ?? '-'}
-                    </div>
-                    <span className="font-bold text-muted-foreground">-</span>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
-                      result ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {result?.golesB ?? '-'}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                  <span className="text-xs sm:text-sm font-bold truncate">{match.equipo_b}</span>
-                  <CountryFlag country={match.equipo_b} size="sm" />
-                </div>
-              </div>
-
-              {/* Acciones */}
-              <div className="flex justify-end gap-2 mt-3">
-                {isEditing ? (
-                  <>
-                    <button
-                      onClick={() => saveResult(match.id)}
-                      disabled={isLoading}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-bold text-sm hover:bg-secondary/90 transition-colors disabled:opacity-50"
-                    >
-                      <Check className="w-4 h-4" />
-                      Guardar
-                    </button>
-                    <button
-                      onClick={() => setEditingMatch(null)}
-                      disabled={isLoading}
-                      className="px-4 py-2 bg-muted text-foreground rounded-lg font-bold text-sm hover:bg-muted/80 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => startEdit(match.id)}
-                    disabled={isLoading}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50 ${
-                      result ? 'bg-muted text-foreground hover:bg-muted/80' : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                return (
+                  <div
+                    key={match.id}
+                    className={`bg-card rounded-xl border-2 p-3 sm:p-4 transition-all shadow-sm ${
+                      result?.estado === 'finalizado' ? 'border-secondary/30 bg-secondary/5' : 'border-border'
                     }`}
                   >
-                    {result ? (
-                      <><Trophy className="w-4 h-4" /> Editar</>
-                    ) : (
-                      <><Check className="w-4 h-4" /> Ingresar resultado</>
-                    )}
-                  </button>
-                )}
-              </div>
+                    {/* Detalles superiores */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded-sm">Partido #{match.id}</span>
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${badge.class}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 sm:gap-4">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <CountryFlag country={match.equipo_a} size="sm" />
+                        <span className="text-xs sm:text-sm font-bold truncate">{match.equipo_a}</span>
+                      </div>
+
+                      {isEditing ? (
+                        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-shrink-0">
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => setGolesA(Math.max(0, golesA - 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive text-xl font-bold transition-colors hover:text-destructive-foreground">-</button>
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-primary rounded-lg font-bold text-xl sm:text-2xl bg-card text-foreground">{golesA}</div>
+                            <button onClick={() => setGolesA(Math.min(20, golesA + 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary text-xl font-bold transition-colors hover:text-primary-foreground">+</button>
+                          </div>
+                          <span className="font-bold text-muted-foreground hidden sm:block">-</span>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => setGolesB(Math.max(0, golesB - 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-destructive/10 text-destructive hover:bg-destructive text-xl font-bold transition-colors hover:text-destructive-foreground">-</button>
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-primary rounded-lg font-bold text-xl sm:text-2xl bg-card text-foreground">{golesB}</div>
+                            <button onClick={() => setGolesB(Math.min(20, golesB + 1))} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary text-xl font-bold transition-colors hover:text-primary-foreground">+</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                            result ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {result?.golesA ?? '-'}
+                          </div>
+                          <span className="font-bold text-muted-foreground">-</span>
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                            result ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {result?.golesB ?? '-'}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                        <span className="text-xs sm:text-sm font-bold truncate">{match.equipo_b}</span>
+                        <CountryFlag country={match.equipo_b} size="sm" />
+                      </div>
+                    </div>
+
+                    {/* Acciones */}
+                    <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-border/40">
+                      {isEditing ? (
+                        <>
+                          <button
+                            onClick={() => saveResult(match.id)}
+                            disabled={isLoading}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-bold text-sm hover:bg-secondary/90 transition-colors disabled:opacity-50"
+                          >
+                            <Check className="w-4 h-4" />
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => setEditingMatch(null)}
+                            disabled={isLoading}
+                            className="px-4 py-2 bg-muted text-foreground rounded-lg font-bold text-sm hover:bg-muted/80 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => startEdit(match.id)}
+                          disabled={isLoading}
+                          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50 ${
+                            result ? 'bg-muted text-foreground hover:bg-muted/80' : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          }`}
+                        >
+                          {result ? (
+                            <><Trophy className="w-4 h-4" /> Editar</>
+                          ) : (
+                            <><Check className="w-4 h-4" /> Ingresar</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
