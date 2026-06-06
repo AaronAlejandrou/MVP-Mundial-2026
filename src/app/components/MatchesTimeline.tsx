@@ -105,8 +105,12 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
             <Trophy className="w-5 h-5 text-accent" />
             Sistema de Puntuación Oficial
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             Suma puntos automáticamente cuando finalicen los partidos.
+            <br />
+            <span className="inline-block mt-1.5 px-2 py-0.5 bg-background rounded border border-border text-xs font-bold text-foreground">
+              ⏳ Tus pronósticos se bloquean 1 hora antes de cada partido
+            </span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
