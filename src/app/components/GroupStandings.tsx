@@ -161,7 +161,6 @@ export function GroupStandings({
         <div className="max-w-4xl mx-auto mt-8">
           <div className="bg-accent/10 rounded-xl border-2 border-accent p-4 sm:p-6">
             <h3 className="text-lg sm:text-xl font-bold text-accent mb-3 flex items-center gap-2">
-              <span>📊</span>
               Mejores Terceros Lugares
             </h3>
             <p className="text-sm text-muted-foreground mb-4">

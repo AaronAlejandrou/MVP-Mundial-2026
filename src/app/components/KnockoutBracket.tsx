@@ -5,7 +5,7 @@ import { apiFetch } from '../../lib/api';
 import { MatchCard } from './MatchCard';
 import { PHASES, R32_L, R32_R, R16_L, R16_R, QF_L, QF_R, SF_L, SF_R, THIRD, FINAL, MInfo, getResolvedKnockoutMatches } from '../../data/knockoutMatches';
 
-const SLOT = 72;
+const SLOT = 84;
 const TOTAL_H = SLOT * 8;
 
 function isPlaceholder(t: string) { return /^[WL]\d|^[1-4]º/.test(t); }

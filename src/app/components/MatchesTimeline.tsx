@@ -109,7 +109,7 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
             Suma puntos automáticamente cuando finalicen los partidos.
             <br />
             <span className="inline-block mt-1.5 px-2 py-0.5 bg-background rounded border border-border text-xs font-bold text-foreground">
-              ⏳ Tus pronósticos se bloquean 1 hora antes de cada partido
+              Tus pronósticos se bloquean 1 hora antes de cada partido
             </span>
           </p>
         </div>
