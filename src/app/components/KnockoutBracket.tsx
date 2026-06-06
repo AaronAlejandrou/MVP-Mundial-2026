@@ -191,7 +191,10 @@ export function KnockoutBracket({
   // Data is now fetched globally and passed via props
   const isLoading = false;
 
-  const resolveTeam = (id: number, s: 'team1' | 'team2', fb: string) => knockoutTeams[id]?.[s] ?? fb;
+  const resolveTeam = (id: number, s: 'team1' | 'team2', fb: string) => {
+    const t = knockoutTeams[id]?.[s];
+    return (t === undefined || t === null || t === "") ? fb : t;
+  };
 
   // Modal state
   const [selectedMatchInfo, setSelectedMatchInfo] = useState<MInfo | null>(null);

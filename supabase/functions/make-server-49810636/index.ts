@@ -600,6 +600,17 @@ app.get("/make-server-49810636/bracket/group-standings-final", async (c) => {
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
 
+app.get("/make-server-49810636/bracket/debug-knockout", async (c) => {
+  const db = getDb();
+  const res = await db.from("knockout_match_teams").insert({
+    league_id: "be1a0128-f18b-4385-b624-6efa46ab03eb",
+    match_id: 73,
+    team1: "A",
+    team2: "B"
+  });
+  return c.json({ data: res.data, error: res.error });
+});
+
 app.get("/make-server-49810636/bracket/fix-knockout", async (c) => {
   try {
     const db = getDb();
