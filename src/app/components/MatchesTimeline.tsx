@@ -110,11 +110,11 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
           </p>
         </div>
         <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
-          <div className="flex flex-col items-center p-2 rounded-lg bg-white border-2 border-accent/40 shadow-sm min-w-[100px] hover:scale-105 transition-transform">
+          <div className="flex flex-col items-center p-2 rounded-lg bg-card border-2 border-accent/40 shadow-sm min-w-[100px] hover:scale-105 transition-transform">
             <span className="font-score text-2xl font-bold text-accent">+5</span>
             <span className="text-[10px] font-bold uppercase text-muted-foreground text-center">Marcador<br/>Exacto</span>
           </div>
-          <div className="flex flex-col items-center p-2 rounded-lg bg-white border-2 border-secondary/40 shadow-sm min-w-[100px] hover:scale-105 transition-transform">
+          <div className="flex flex-col items-center p-2 rounded-lg bg-card border-2 border-secondary/40 shadow-sm min-w-[100px] hover:scale-105 transition-transform">
             <span className="font-score text-2xl font-bold text-secondary">+2</span>
             <span className="text-[10px] font-bold uppercase text-muted-foreground text-center">Acierto al Ganador<br/>O Empate</span>
           </div>

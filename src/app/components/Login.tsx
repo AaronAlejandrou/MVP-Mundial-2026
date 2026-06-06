@@ -41,7 +41,7 @@ export function Login({ onLogin }: LoginProps) {
 
       {/* Login Card */}
       <div className="relative w-full max-w-md">
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-mundial-lg border border-border p-6 sm:p-8 lg:p-10">
+        <div className="bg-card rounded-2xl sm:rounded-3xl shadow-mundial-lg border border-border p-6 sm:p-8 lg:p-10">
           {/* Logo del Mundial 2026 */}
           <div className="flex justify-center mb-6 sm:mb-8">
             <img

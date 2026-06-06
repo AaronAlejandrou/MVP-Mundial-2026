@@ -10,7 +10,7 @@ export function TeamHoverCard({ team }: TeamHoverCardProps) {
 
   if (recentMatches.length === 0) {
     return (
-      <div className="bg-white rounded-lg border-2 border-border p-4 shadow-mundial-lg min-w-[250px]">
+      <div className="bg-card rounded-lg border-2 border-border p-4 shadow-mundial-lg min-w-[250px]">
         <div className="flex items-center gap-2 mb-3">
           <CountryFlag country={team} size="md" />
           <h3 className="font-bold text-sm">{team}</h3>
@@ -21,7 +21,7 @@ export function TeamHoverCard({ team }: TeamHoverCardProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg border-2 border-primary shadow-mundial-lg min-w-[280px] max-w-[320px]">
+    <div className="bg-card rounded-lg border-2 border-primary shadow-mundial-lg min-w-[280px] max-w-[320px]">
       {/* Header */}
       <div className="bg-primary/5 px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2">

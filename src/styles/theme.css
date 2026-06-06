@@ -92,6 +92,67 @@
   --blob-lime: rgba(164, 235, 51, 0.08);
 }
 
+.dark {
+  /* === FONDOS (60%) === */
+  --background: #0F172A;
+  --foreground: #F8FAFC;
+
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  --popover: #1E293B;
+  --popover-foreground: #F8FAFC;
+
+  /* === TEXTOS Y ESTRUCTURA (30%) === */
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --border-color: #334155;
+
+  /* Primary - Morado Oficial (ligeramente más claro para dark mode) */
+  --primary: #9F5FDB;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary - Cian Menta */
+  --secondary: #48E5C2;
+  --secondary-foreground: #0F172A;
+
+  /* Muted - Grises sutiles oscuros */
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+
+  /* Accent - Lima */
+  --accent: #A4EB33;
+  --accent-foreground: #0F172A;
+
+  /* Destructive - Fucsia */
+  --destructive: #E6005C;
+  --destructive-foreground: #FFFFFF;
+
+  /* Borders - Oscuros */
+  --border: #334155;
+  --input: #334155;
+  --input-background: #1E293B;
+  --switch-background: #334155;
+
+  /* Ring/Focus */
+  --ring: #9F5FDB;
+
+  /* Sidebar */
+  --sidebar: #1E293B;
+  --sidebar-foreground: #F8FAFC;
+  --sidebar-primary: #9F5FDB;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #0F172A;
+  --sidebar-accent-foreground: #F8FAFC;
+  --sidebar-border: #334155;
+  --sidebar-ring: #9F5FDB;
+
+  /* Blobs sutiles en modo oscuro (más opacos para destacar en fondo oscuro) */
+  --blob-purple: rgba(159, 95, 219, 0.15);
+  --blob-cyan: rgba(72, 229, 194, 0.15);
+  --blob-fuscia: rgba(230, 0, 92, 0.15);
+  --blob-lime: rgba(164, 235, 51, 0.15);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

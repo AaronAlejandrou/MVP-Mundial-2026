@@ -66,7 +66,7 @@ export function LeagueManager({
   if (currentLeague) {
     return (
       <div className="space-y-5">
-        <div className="bg-white rounded-2xl border-2 border-border shadow-mundial-lg overflow-hidden">
+        <div className="bg-card rounded-2xl border-2 border-border shadow-mundial-lg overflow-hidden">
           {/* Header */}
           <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/5 to-secondary/5">
             <div className="flex items-center gap-4">
@@ -148,8 +148,8 @@ export function LeagueManager({
   return (
     <div className="space-y-4">
       {/* Unirse a liga (siempre disponible) */}
-      <div className="bg-white rounded-2xl border-2 border-border shadow-mundial p-6">
-        <div className="flex items-center gap-3 mb-4">
+      <div className="bg-card rounded-2xl border-2 border-border shadow-mundial p-6">
+        <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
             <LogIn className="w-6 h-6 text-primary-foreground" />
           </div>
@@ -187,8 +187,8 @@ export function LeagueManager({
 
       {/* Crear liga — solo admin designado + ninguna liga existe todavía */}
       {!leagueExists && isAdmin && (
-        <div className="bg-white rounded-2xl border-2 border-border shadow-mundial p-6">
-          <div className="flex items-center gap-3 mb-4">
+        <div className="bg-card rounded-2xl border-2 border-border shadow-mundial p-6">
+          <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
               <Plus className="w-6 h-6 text-secondary-foreground" />
             </div>

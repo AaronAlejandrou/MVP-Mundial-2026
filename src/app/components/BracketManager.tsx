@@ -272,7 +272,7 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
               El orden es importante porque define contra qué 1er lugar juegan. Usa las flechas para resolver empates manualmente (ej. Fair Play o Sorteo).
             </p>
             
-            <div className="space-y-2 bg-white rounded-lg border border-border p-2">
+            <div className="space-y-2 bg-card rounded-lg border border-border p-2">
               {thirds.map((t: any, i) => {
                 const isClasificado = i < 8;
                 return (
@@ -346,7 +346,7 @@ export function BracketManager({ league, accessToken, matchResults, onBracketCon
                 </button>
 
                 {expandedGroup === group.grupo && (
-                  <div className="bg-white">
+                  <div className="bg-card">
                     <div className="grid grid-cols-[auto_1fr_repeat(7,_auto)_auto] gap-x-2 items-center px-3 py-1.5 border-b border-border bg-muted/30">
                       <span className="text-[10px] font-bold text-muted-foreground w-4">#</span>
                       <span className="text-[10px] font-bold text-muted-foreground">Equipo</span>

@@ -106,7 +106,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-card rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b-2 border-border bg-gradient-to-r from-primary/10 to-secondary/10">
           <div className="flex items-center justify-between">
@@ -134,7 +134,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
             onClick={() => setActiveTab('results')}
             className={`flex-1 px-4 py-3 font-bold text-xs sm:text-sm transition-all ${
               activeTab === 'results'
-                ? 'bg-white text-primary border-b-2 border-primary'
+                ? 'bg-card text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -148,7 +148,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
             onClick={() => setActiveTab('approvals')}
             className={`flex-1 px-4 py-3 font-bold text-xs sm:text-sm transition-all relative ${
               activeTab === 'approvals'
-                ? 'bg-white text-primary border-b-2 border-primary'
+                ? 'bg-card text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -166,7 +166,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
             onClick={() => setActiveTab('bracket')}
             className={`flex-1 px-4 py-3 font-bold text-xs sm:text-sm transition-all ${
               activeTab === 'bracket'
-                ? 'bg-white text-accent border-b-2 border-accent'
+                ? 'bg-card text-accent border-b-2 border-accent'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -309,7 +309,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
           return (
             <div
               key={match.id}
-              className={`bg-white rounded-lg border-2 p-3 sm:p-4 transition-all ${
+              className={`bg-card rounded-lg border-2 p-3 sm:p-4 transition-all ${
                 result?.estado === 'finalizado' ? 'border-secondary/30 bg-secondary/5' : 'border-border'
               }`}
             >
@@ -429,7 +429,7 @@ function ApprovalsTab({ pendingUsers, onApprove, isLoading }: any) {
   return (
     <div className="space-y-3">
       {pendingUsers.map((user: any) => (
-        <div key={user.id} className="bg-white rounded-lg border-2 border-border p-4">
+        <div key={user.id} className="bg-card rounded-lg border-2 border-border p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">

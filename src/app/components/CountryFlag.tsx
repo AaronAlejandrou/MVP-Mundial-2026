@@ -218,7 +218,7 @@ export function CountryFlag({ country, size = 'md', className = '' }: CountryFla
     // Fallback con iniciales
     return (
       <div
-        className={`${sizeClass} ${className} rounded-full flex items-center justify-center border-2 border-white shadow-md flex-shrink-0`}
+        className={`${sizeClass} ${className} rounded-full flex items-center justify-center border-2 border-card shadow-md flex-shrink-0`}
         style={{ background: 'linear-gradient(135deg, var(--mundial-purple), var(--mundial-turquoise))' }}
       >
         <span className={`${textSize} font-bold text-white`}>{getInitials(country)}</span>
@@ -230,7 +230,7 @@ export function CountryFlag({ country, size = 'md', className = '' }: CountryFla
 
   return (
     <div
-      className={`${sizeClass} ${className} rounded-full overflow-hidden flex items-center justify-center border-2 border-white shadow-md relative bg-gray-50 flex-shrink-0`}
+      className={`${sizeClass} ${className} rounded-full overflow-hidden flex items-center justify-center border-2 border-card shadow-md relative bg-gray-50 flex-shrink-0`}
     >
       <img
         src={flagUrl}

@@ -32,15 +32,15 @@ function ToastMessage({ toast, onRemove }: { toast: ToastItem; onRemove: (id: st
 
   const styles = {
     success: {
-      bg: 'bg-white border-secondary',
+      bg: 'bg-card border-secondary',
       icon: <CheckCircle className="w-5 h-5 text-secondary flex-shrink-0" />,
     },
     error: {
-      bg: 'bg-white border-destructive',
+      bg: 'bg-card border-destructive',
       icon: <XCircle className="w-5 h-5 text-destructive flex-shrink-0" />,
     },
     info: {
-      bg: 'bg-white border-primary',
+      bg: 'bg-card border-primary',
       icon: <AlertCircle className="w-5 h-5 text-primary flex-shrink-0" />,
     },
   };

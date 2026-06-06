@@ -10,7 +10,7 @@ export function GroupHoverCard({ grupo }: GroupHoverCardProps) {
 
   if (!groupData) {
     return (
-      <div className="bg-white rounded-lg border-2 border-border p-3 shadow-mundial-lg">
+      <div className="bg-card rounded-lg border-2 border-border p-3 shadow-mundial-lg">
         <p className="text-xs text-muted-foreground">Grupo no encontrado</p>
       </div>
     );
@@ -24,7 +24,7 @@ export function GroupHoverCard({ grupo }: GroupHoverCardProps) {
   });
 
   return (
-    <div className="bg-white rounded-lg border-2 border-primary shadow-mundial-lg min-w-[280px]">
+    <div className="bg-card rounded-lg border-2 border-primary shadow-mundial-lg min-w-[280px]">
       {/* Header */}
       <div className="bg-primary text-primary-foreground px-3 py-2">
         <h3 className="font-bold text-sm">Grupo {grupo}</h3>

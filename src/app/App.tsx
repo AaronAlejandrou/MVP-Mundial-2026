@@ -4,6 +4,7 @@ import { MatchesTimeline } from './components/MatchesTimeline';
 import { Leaderboard } from './components/Leaderboard';
 import { LeagueManager } from './components/LeagueManager';
 import { Auth } from './components/Auth';
+import { ThemeToggle } from './components/ThemeToggle';
 import { KnockoutBracket } from './components/KnockoutBracket';
 import { GroupStandings } from './components/GroupStandings';
 import { AdminPanel } from './components/AdminPanel';
@@ -19,6 +20,7 @@ export default function App() {
   const [currentUser, setCurrentUser]     = useState<any>(null);
   const [accessToken, setAccessToken]     = useState<string>('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [currentLeague, setCurrentLeague]   = useState<any>(null);
   const [isLeagueAdmin, setIsLeagueAdmin]   = useState(false);
@@ -180,11 +182,17 @@ export default function App() {
   // ── Auth handlers ────────────────────────────────────────────────────────
 
   const handleAuth = async (user: any, token: string) => {
+    setIsAuthenticating(true);
+    try {
+      await Promise.all([loadUserLeague(user.id, token), checkLeagueExists()]);
+    } catch { /* silent */ }
+    
     setCurrentUser(user);                   // user.is_admin viene del servidor
     setAccessToken(token);
     if (user.is_admin) setIsLeagueAdmin(true);
-    await Promise.all([loadUserLeague(user.id, token), checkLeagueExists()]);
     if (invitationCode) setTimeout(() => handleJoinLeagueByCode(invitationCode!), 600);
+    
+    setIsAuthenticating(false);
   };
 
   const handleLogout = async () => {
@@ -277,9 +285,11 @@ export default function App() {
 
   const handleViewGroup = (grupo: string) => {
     setSelectedGroup(grupo); setHighlightTeam(undefined); setCurrentView('standings');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const handleViewTeam = (team: string, grupo: string) => {
     setSelectedGroup(grupo); setHighlightTeam(team); setCurrentView('standings');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const baseMatches = bracketLocked ? [...GROUP_STAGE_MATCHES, ...getResolvedKnockoutMatches(knockoutTeams)] : GROUP_STAGE_MATCHES;
@@ -292,12 +302,19 @@ export default function App() {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  if (isCheckingAuth) {
+  if (isCheckingAuth || isAuthenticating) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-3">
+      <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+        {/* Video Background para que no haya corte brusco */}
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden opacity-50">
+          <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+            <source src="/video-intro.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px]" />
+        </div>
+        <div className="text-center space-y-3 relative z-10">
           <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
-          <p className="text-sm font-medium text-muted-foreground">Cargando...</p>
+          <p className="text-sm font-bold text-white drop-shadow-md">Sincronizando...</p>
         </div>
       </div>
     );
@@ -315,18 +332,27 @@ export default function App() {
   if (!currentLeague) {
     return (
       <>
-        <div className="min-h-screen bg-background p-4 relative overflow-hidden">
-          <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-3xl opacity-30 pointer-events-none" style={{ background: 'var(--blob-purple)' }} />
-          <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-3xl opacity-30 pointer-events-none" style={{ background: 'var(--blob-cyan)' }} />
-          <div className="max-w-2xl mx-auto py-8 relative">
+        <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-black p-4">
+          {/* Video Background */}
+          <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+            <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+              <source src="/video-intro.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px]" />
+          </div>
+
+          <div className="w-full max-w-lg mx-auto py-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gradient-mundial mb-2">Polla Mundial 2026</h1>
-              <p className="text-muted-foreground font-medium">
+              <h1 className="text-3xl font-black text-foreground tracking-tight mb-3 drop-shadow-md">
+                Polla Mundial <span className="text-primary">2026</span>
+              </h1>
+              <p className="text-sm font-medium text-foreground bg-background/60 inline-block px-4 py-1.5 rounded-full backdrop-blur-md border border-border/50 shadow-sm">
                 {leagueExists === false
-                  ? 'Bienvenido — crea la liga para comenzar el torneo'
+                  ? 'Bienvenido — crea la liga para comenzar'
                   : 'Únete a la liga con tu código de invitación'}
               </p>
             </div>
+
             <LeagueManager
               leagueExists={leagueExists ?? false}
               isAdmin={currentUser?.is_admin === true}
@@ -334,8 +360,20 @@ export default function App() {
               onJoinLeague={handleJoinLeagueByCode}
               invitationCode={invitationCode || undefined}
             />
+
+            {/* Notorious Theme Selector */}
+            <div className="mt-8 bg-card/60 backdrop-blur-xl border border-border/50 p-5 rounded-3xl flex flex-col items-center gap-3 shadow-mundial-lg transition-all hover:bg-card/80">
+              <p className="text-sm font-bold text-foreground text-center">
+                Personaliza tu experiencia:<br/>
+                <span className="text-xs text-muted-foreground font-medium">Elige el tema claro u oscuro antes de entrar</span>
+              </p>
+              <div className="transform scale-125 mt-1">
+                <ThemeToggle />
+              </div>
+            </div>
+
             <div className="mt-8 text-center">
-              <button onClick={handleLogout} className="text-sm text-muted-foreground hover:text-destructive transition-colors font-medium">
+              <button onClick={handleLogout} className="text-sm text-muted-foreground hover:text-destructive transition-colors font-bold px-4 py-2 rounded-xl hover:bg-destructive/10">
                 Cerrar sesión
               </button>
             </div>
@@ -346,11 +384,20 @@ export default function App() {
     );
   }
 
+  const handleViewChange = (view: 'matches' | 'leaderboard' | 'leagues' | 'knockout' | 'standings') => {
+    setCurrentView(view);
+    if (view !== 'standings') {
+      setSelectedGroup(undefined);
+      setHighlightTeam(undefined);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <>
       <Layout
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
         leagueCode={currentLeague?.invitationCode}
         onLogout={handleLogout}
         isAdmin={isLeagueAdmin}
@@ -386,26 +433,19 @@ export default function App() {
             onSavePrediction={handleSavePrediction}
           />
         )}
-        {currentView === 'standings' && <GroupStandings selectedGroup={selectedGroup} highlightTeam={highlightTeam} />}
+        {currentView === 'standings' && (
+          <GroupStandings 
+            selectedGroup={selectedGroup} 
+            highlightTeam={highlightTeam}
+            matches={enrichedMatches}
+            predictions={predictions}
+            onSavePrediction={handleSavePrediction}
+            onViewGroup={handleViewGroup}
+          />
+        )}
         {currentView === 'leaderboard' && (
           <div className="max-w-3xl mx-auto">
-            <Leaderboard players={leaderboard} currentUserId={currentUser.id} />
-          </div>
-        )}
-        {currentView === 'leagues' && (
-          <div className="max-w-2xl mx-auto">
-            <LeagueManager
-              leagueExists={true}
-              currentLeague={{
-                id: currentLeague?.id,
-                nombre: currentLeague?.nombre,
-                codigo_invitacion: currentLeague?.invitationCode,
-                admin_id: currentLeague?.admin_id,
-                member_count: currentLeague?.member_count || 1,
-              }}
-              onCreateLeague={handleCreateLeague}
-              onJoinLeague={handleJoinLeagueByCode}
-            />
+            <Leaderboard players={leaderboard} currentUserId={currentUser.id} currentLeague={currentLeague} />
           </div>
         )}
       </Layout>

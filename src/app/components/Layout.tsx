@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Trophy, Calendar, Users, Menu, X, LogOut, Award, Table2, Shield } from 'lucide-react';
 import imgLogo from '../../imports/2026_FIFA_World_Cup_Logo_2023-s2560.png';
+import { ThemeToggle } from './ThemeToggle';
 
 interface LayoutProps {
   children: ReactNode;
@@ -17,9 +18,16 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen flex flex-col relative bg-black">
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+          <source src="/video-intro.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px]" />
+      </div>
+
       {/* Top Navbar */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b-2 shadow-sm" style={{ borderColor: 'var(--primary)' }}>
+      <nav className="sticky top-0 z-50 bg-background/20 backdrop-blur-2xl border-b border-border/50 shadow-md" style={{ borderColor: 'var(--primary)' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Logo */}
@@ -123,26 +131,8 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
               >
                 <div className="flex items-center gap-1 lg:gap-2">
                   <Trophy className="w-3 h-3 lg:w-4 lg:h-4" />
-                  <span className="hidden lg:inline">Clasificación</span>
-                  <span className="lg:hidden">Tabla</span>
-                </div>
-              </button>
-              <button
-                onClick={() => onViewChange('leagues')}
-                className={`px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
-                  currentView === 'leagues'
-                    ? 'scale-105'
-                    : 'hover:scale-105'
-                }`}
-                style={
-                  currentView === 'leagues'
-                    ? { background: 'linear-gradient(135deg, var(--mundial-lime), var(--mundial-yellow))', color: '#1A1A1A' }
-                    : { background: 'rgba(0, 0, 0, 0.03)', color: '#1A1A1A' }
-                }
-              >
-                <div className="flex items-center gap-1 lg:gap-2">
-                  <Users className="w-3 h-3 lg:w-4 lg:h-4" />
-                  Ligas
+                  <span className="hidden lg:inline">Ranking</span>
+                  <span className="lg:hidden">Ranking</span>
                 </div>
               </button>
 
@@ -176,19 +166,26 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
                   </div>
                 </button>
               )}
+              
+              <div className="ml-2 pl-2 border-l-2 border-border hidden sm:flex items-center">
+                <ThemeToggle />
+              </div>
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="md:hidden p-2 rounded-xl hover:bg-muted transition-all"
-            >
-              {menuOpen ? (
-                <X className="w-6 h-6 text-foreground" />
-              ) : (
-                <Menu className="w-6 h-6 text-foreground" />
-              )}
-            </button>
+            {/* Mobile Menu Button & Theme Toggle */}
+            <div className="md:hidden flex items-center gap-2">
+              <ThemeToggle />
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-2 rounded-xl hover:bg-muted transition-all"
+              >
+                {menuOpen ? (
+                  <X className="w-6 h-6 text-foreground" />
+                ) : (
+                  <Menu className="w-6 h-6 text-foreground" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Mobile Dropdown Menu */}
@@ -280,26 +277,7 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
               >
                 <div className="flex items-center gap-3">
                   <Trophy className="w-5 h-5" />
-                  Clasificación
-                </div>
-              </button>
-              <button
-                onClick={() => {
-                  onViewChange('leagues');
-                  setMenuOpen(false);
-                }}
-                className={`w-full px-4 py-3 rounded-xl font-bold text-sm transition-all text-left ${
-                  currentView === 'leagues' ? '' : ''
-                }`}
-                style={
-                  currentView === 'leagues'
-                    ? { background: 'var(--gradient-primary)', color: 'white' }
-                    : { background: 'var(--muted)', color: 'var(--foreground)' }
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <Users className="w-5 h-5" />
-                  Ligas
+                  Ranking
                 </div>
               </button>
 
@@ -320,14 +298,14 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 pb-20 md:pb-8">
+      <main className="flex-1 pb-20 md:pb-8 relative z-10">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
           {children}
         </div>
       </main>
 
       {/* Bottom Navigation (Mobile Only) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t-2 shadow-lg safe-area-bottom border-border">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/40 backdrop-blur-2xl border-t border-border/50 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.1)]">
         <div className="grid grid-cols-4 gap-1 px-2 py-3">
           <button
             onClick={() => onViewChange('matches')}
@@ -399,27 +377,27 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
           </button>
 
           <button
-            onClick={() => onViewChange('leagues')}
-            className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
-            style={
-              currentView === 'leagues'
-                ? { background: 'var(--blob-purple)' }
-                : {}
-            }
-          >
-            <Users
-              className={`w-5 h-5 transition-colors ${
-                currentView === 'leagues' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            />
-            <span
-              className={`text-xs font-bold transition-colors ${
-                currentView === 'leagues' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Ligas
-            </span>
-          </button>
+                onClick={() => onViewChange('leaderboard')}
+                className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
+                style={
+                  currentView === 'leaderboard'
+                    ? { background: 'var(--blob-purple)' }
+                    : {}
+                }
+              >
+                <Trophy
+                  className={`w-5 h-5 transition-colors ${
+                    currentView === 'leaderboard' ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                />
+                <span
+                  className={`text-xs font-bold transition-colors ${
+                    currentView === 'leaderboard' ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                >
+                  Ranking
+                </span>
+              </button>
         </div>
       </nav>
     </div>

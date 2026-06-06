@@ -1,14 +1,26 @@
 import { useState } from 'react';
 import { GroupTable } from './GroupTable';
 import { GROUP_STANDINGS } from '../../data/groupStandingsData';
-import { List, Grid3x3 } from 'lucide-react';
+import { List, Grid3x3, Calendar } from 'lucide-react';
+import { MatchCard } from './MatchCard';
 
 interface GroupStandingsProps {
   selectedGroup?: string;
   highlightTeam?: string;
+  matches?: any[];
+  predictions?: Record<number, any>;
+  onSavePrediction?: (matchId: number, golesA: number, golesB: number) => Promise<void>;
+  onViewGroup?: (grupo: string) => void;
 }
 
-export function GroupStandings({ selectedGroup, highlightTeam }: GroupStandingsProps) {
+export function GroupStandings({ 
+  selectedGroup, 
+  highlightTeam,
+  matches = [],
+  predictions = {},
+  onSavePrediction,
+  onViewGroup
+}: GroupStandingsProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Si hay un grupo seleccionado, mostrar solo ese grupo
@@ -16,10 +28,14 @@ export function GroupStandings({ selectedGroup, highlightTeam }: GroupStandingsP
     ? GROUP_STANDINGS.filter(g => g.grupo === selectedGroup)
     : GROUP_STANDINGS;
 
+  const groupMatches = selectedGroup 
+    ? matches.filter(m => m.grupo === selectedGroup)
+    : [];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gradient-mundial mb-1">
             {selectedGroup ? `Grupo ${selectedGroup}` : 'Tabla de Posiciones'}
@@ -36,7 +52,7 @@ export function GroupStandings({ selectedGroup, highlightTeam }: GroupStandingsP
               onClick={() => setViewMode('grid')}
               className={`px-3 py-2 rounded-md transition-all flex items-center gap-2 ${
                 viewMode === 'grid'
-                  ? 'bg-white shadow-sm text-primary'
+                  ? 'bg-card shadow-sm text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -47,7 +63,7 @@ export function GroupStandings({ selectedGroup, highlightTeam }: GroupStandingsP
               onClick={() => setViewMode('list')}
               className={`px-3 py-2 rounded-md transition-all flex items-center gap-2 ${
                 viewMode === 'list'
-                  ? 'bg-white shadow-sm text-primary'
+                  ? 'bg-card shadow-sm text-primary'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -73,9 +89,32 @@ export function GroupStandings({ selectedGroup, highlightTeam }: GroupStandingsP
             equipos={group.equipos}
             highlightTeam={highlightTeam}
             compact={viewMode === 'grid' && !selectedGroup}
+            onViewGroup={!selectedGroup ? onViewGroup : undefined}
           />
         ))}
       </div>
+
+      {/* Group Matches section (only when a specific group is selected) */}
+      {selectedGroup && groupMatches.length > 0 && (
+        <div className="max-w-4xl mx-auto mt-10">
+          <div className="flex items-center gap-2 mb-6 border-b border-border pb-4">
+            <Calendar className="w-6 h-6 text-primary" />
+            <h3 className="text-xl sm:text-2xl font-bold text-foreground">
+              Partidos del Grupo {selectedGroup}
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+            {groupMatches.map((match) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                prediction={predictions[match.id]}
+                onSavePrediction={onSavePrediction!}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Best Third Places */}
       {!selectedGroup && (
@@ -89,7 +128,7 @@ export function GroupStandings({ selectedGroup, highlightTeam }: GroupStandingsP
               Los 8 mejores terceros lugares de los 12 grupos clasifican a la fase de 16avos de final.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bg-white rounded-lg p-3 border border-accent/20">
+              <div className="bg-card rounded-lg p-3 border border-accent/20">
                 <div className="text-xs font-bold text-muted-foreground mb-2">Criterios de Desempate:</div>
                 <ol className="text-xs space-y-1 text-foreground">
                   <li>1. Mayor cantidad de puntos</li>
@@ -98,7 +137,7 @@ export function GroupStandings({ selectedGroup, highlightTeam }: GroupStandingsP
                   <li>4. Fair Play (menor tarjetas)</li>
                 </ol>
               </div>
-              <div className="bg-white rounded-lg p-3 border border-accent/20">
+              <div className="bg-card rounded-lg p-3 border border-accent/20">
                 <div className="text-xs font-bold text-muted-foreground mb-2">Clasificación:</div>
                 <ul className="text-xs space-y-1 text-foreground">
                   <li>• 1º y 2º de cada grupo → 16avos (24 equipos)</li>

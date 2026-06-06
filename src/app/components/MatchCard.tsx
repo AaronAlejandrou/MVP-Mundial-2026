@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Lock, Check, Clock, MapPin, Trophy, Plus, Minus, Table2 } from 'lucide-react';
+import { Lock, Check, Clock, MapPin, Trophy, Plus, Minus, Table2, ChevronRight, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { CountryFlag } from './CountryFlag';
 import { GroupHoverCard } from './GroupHoverCard';
@@ -107,7 +107,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
   return (
     <div className="relative w-full">
       {/* Main Card */}
-      <div className="bg-white rounded-xl shadow-mundial border border-border overflow-hidden transition-all duration-300 hover:shadow-mundial-lg max-w-full">
+      <div className="bg-card rounded-xl shadow-mundial border border-border overflow-hidden transition-all duration-300 hover:shadow-mundial-lg max-w-full">
         {/* Header */}
         <div className="px-3 sm:px-5 py-2 sm:py-3 border-b border-border bg-muted">
           <div className="flex items-center justify-between flex-wrap gap-1 sm:gap-2">
@@ -124,10 +124,12 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                 onMouseEnter={() => setShowGroupHover(true)}
                 onMouseLeave={() => setShowGroupHover(false)}
                 onClick={() => onViewGroup?.(match.grupo)}
-                className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 transition-all flex items-center gap-1"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-muted hover:bg-primary hover:text-white text-foreground transition-all flex items-center gap-1.5 border border-border hover:border-primary group"
+                title={`Ver tabla y partidos del Grupo ${match.grupo}`}
               >
-                <Table2 className="w-3 h-3" />
-                GRUPO {match.grupo}
+                <Table2 className="w-3 h-3 text-primary group-hover:text-white transition-colors" />
+                <span>GRUPO {match.grupo}</span>
+                <ChevronRight className="w-3 h-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
               </button>
             </div>
           </div>
@@ -142,7 +144,8 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                 onMouseEnter={() => setShowTeamAHover(true)}
                 onMouseLeave={() => setShowTeamAHover(false)}
                 onClick={() => onViewTeam?.(match.equipo_a, match.grupo)}
-                className="flex flex-col items-center w-full cursor-pointer group"
+                className="flex flex-col items-center w-full cursor-pointer group relative p-2 rounded-xl hover:bg-muted/50 transition-colors"
+                title={`Ver tabla del Grupo ${match.grupo}`}
               >
                 <CountryFlag country={match.equipo_a} size="md" className="mb-1 sm:mb-2 transition-transform group-hover:scale-110" />
                 <span className="text-xs font-bold text-foreground group-hover:text-primary text-center leading-tight truncate w-full px-1 transition-colors">
@@ -162,7 +165,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                 >
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center font-score text-3xl sm:text-4xl font-bold shadow-sm bg-white border-2 border-border text-foreground">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center font-score text-3xl sm:text-4xl font-bold shadow-sm bg-background border-2 border-border text-foreground">
                   {golesA}
                 </div>
                 <button
@@ -185,7 +188,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                 >
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center font-score text-3xl sm:text-4xl font-bold shadow-sm bg-white border-2 border-border text-foreground">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center font-score text-3xl sm:text-4xl font-bold shadow-sm bg-background border-2 border-border text-foreground">
                   {golesB}
                 </div>
                 <button
@@ -204,7 +207,8 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                 onMouseEnter={() => setShowTeamBHover(true)}
                 onMouseLeave={() => setShowTeamBHover(false)}
                 onClick={() => onViewTeam?.(match.equipo_b, match.grupo)}
-                className="flex flex-col items-center w-full cursor-pointer group"
+                className="flex flex-col items-center w-full cursor-pointer group relative p-2 rounded-xl hover:bg-muted/50 transition-colors"
+                title={`Ver tabla del Grupo ${match.grupo}`}
               >
                 <CountryFlag country={match.equipo_b} size="md" className="mb-1 sm:mb-2 transition-transform group-hover:scale-110" />
                 <span className="text-xs font-bold text-foreground group-hover:text-primary text-center leading-tight truncate w-full px-1 transition-colors">

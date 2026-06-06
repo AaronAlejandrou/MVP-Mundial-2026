@@ -41,7 +41,7 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, predi
   return (
     <div 
       onClick={() => onClick && onClick(m)}
-      className={`w-full rounded-md bg-white ${containerClass} ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
+      className={`w-full rounded-md bg-card ${containerClass} ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
     >
       <div className={`px-1.5 py-1 flex items-center justify-between ${headerBgClass}`}>
         <div className="flex items-center gap-1">
@@ -159,7 +159,7 @@ function MobileView({ resolveTeam, onMatchClick, predictions, matchResults }: {
             {open.includes(i) ? <ChevronUp className="w-5 h-5 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
           </button>
           {open.includes(i) && (
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white">
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-card">
               {ph.matches.map(m => (
                 <div key={m.id} className="flex justify-center w-full max-w-[240px] mx-auto">
                   <BracketMatch m={m} resolveTeam={resolveTeam} isFinal={ph.isFinal} isThird={ph.isThird} onClick={onMatchClick} result={matchResults?.[m.id]} prediction={predictions?.[m.id]} />

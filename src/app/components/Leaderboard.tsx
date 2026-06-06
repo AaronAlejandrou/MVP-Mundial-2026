@@ -1,4 +1,5 @@
-import { TrendingUp, TrendingDown, Trophy, Medal, Crown, Award } from 'lucide-react';
+import { useState } from 'react';
+import { TrendingUp, TrendingDown, Trophy, ChevronRight, Share2, Check, Users } from 'lucide-react';
 
 interface LeaderboardPlayer {
   id: string;
@@ -8,47 +9,26 @@ interface LeaderboardPlayer {
   posicion_anterior?: number;
 }
 
+interface League {
+  id: string;
+  nombre: string;
+  invitationCode?: string;
+  codigo_invitacion?: string;
+}
+
 interface LeaderboardProps {
   players: LeaderboardPlayer[];
   currentUserId?: string;
+  currentLeague?: League;
 }
 
-export function Leaderboard({ players, currentUserId }: LeaderboardProps) {
+export function Leaderboard({ players, currentUserId, currentLeague }: LeaderboardProps) {
+  const [copiedLink, setCopiedLink] = useState(false);
   const sortedPlayers = [...players].sort((a, b) => b.puntaje_total - a.puntaje_total);
 
   const getPositionChange = (currentPos: number, player: LeaderboardPlayer) => {
     if (!player.posicion_anterior) return null;
-    const change = player.posicion_anterior - currentPos;
-    return change;
-  };
-
-  const getPositionDisplay = (position: number) => {
-    switch (position) {
-      case 1:
-        return {
-          icon: <Crown className="w-7 h-7" style={{ color: '#FFD700' }} />,
-          bg: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.15))',
-          border: '#FFD700'
-        };
-      case 2:
-        return {
-          icon: <Medal className="w-6 h-6" style={{ color: '#C0C0C0' }} />,
-          bg: 'linear-gradient(135deg, rgba(192, 192, 192, 0.15), rgba(158, 158, 158, 0.15))',
-          border: '#C0C0C0'
-        };
-      case 3:
-        return {
-          icon: <Medal className="w-6 h-6" style={{ color: '#CD7F32' }} />,
-          bg: 'linear-gradient(135deg, rgba(205, 127, 50, 0.15), rgba(184, 115, 51, 0.15))',
-          border: '#CD7F32'
-        };
-      default:
-        return {
-          icon: <span className="text-lg font-bold text-muted-foreground">#{position}</span>,
-          bg: 'transparent',
-          border: 'transparent'
-        };
-    }
+    return player.posicion_anterior - currentPos;
   };
 
   const getAvatarInitials = (name: string) => {
@@ -60,166 +40,189 @@ export function Leaderboard({ players, currentUserId }: LeaderboardProps) {
       .slice(0, 2);
   };
 
+  const copyLink = async () => {
+    const code = currentLeague?.invitationCode || currentLeague?.codigo_invitacion;
+    if (!code) return;
+    const link = `${window.location.origin}/?invite=${code}`;
+    await navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   return (
-    <div className="relative">
-      {/* Main Card */}
-      <div className="relative bg-white rounded-2xl shadow-mundial-lg border-2 border-border overflow-hidden">
-        {/* Header */}
-        <div
-          className="px-4 sm:px-6 py-4 sm:py-6 border-b-2 border-border bg-muted"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-2xl sm:text-3xl font-bold text-gradient-mundial mb-1">Clasificación</h2>
-              <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                {sortedPlayers.length} participante{sortedPlayers.length !== 1 ? 's' : ''} • Mundial 2026
-              </p>
+    <div className="relative w-full max-w-4xl mx-auto py-8 sm:py-12 px-4 sm:px-6">
+      
+      {/* Main content starts directly */}
+
+      {/* Cabecera minimalista y Premium */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12 gap-6">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2 text-primary/80">
+            <Trophy className="w-5 h-5" />
+            <span className="font-bold uppercase tracking-widest text-xs">Ranking Oficial</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-foreground leading-tight">
+            {currentLeague?.nombre || "Cargando Liga..."}
+          </h2>
+          <div className="flex items-center gap-4 mt-4">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-lg text-muted-foreground font-medium text-xs sm:text-sm">
+              <Users className="w-4 h-4" />
+              <span>{sortedPlayers.length} competidores</span>
             </div>
-            <div
-              className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-md bg-primary flex-shrink-0"
-            >
-              <Trophy className="w-7 h-7 sm:w-9 sm:h-9 text-primary-foreground" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg font-bold text-xs sm:text-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              En Curso
             </div>
           </div>
         </div>
+        
+        {/* Botón Invitar */}
+        {(currentLeague?.invitationCode || currentLeague?.codigo_invitacion) && (
+          <div className="flex-shrink-0 flex flex-col items-end gap-2">
+            <button
+              onClick={copyLink}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm ${
+                copiedLink
+                  ? 'bg-emerald-500 text-white shadow-emerald-500/20 scale-105'
+                  : 'bg-primary text-primary-foreground hover:scale-105 hover:shadow-primary/20 shadow-lg'
+              }`}
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  ¡Enlace copiado!
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  Invitar Amigos
+                </>
+              )}
+            </button>
+            <span className="text-[10px] text-slate-400 font-medium mr-1">
+              Código: <span className="font-mono font-bold text-slate-600">{currentLeague.invitationCode || currentLeague.codigo_invitacion}</span>
+            </span>
+          </div>
+        )}
+      </div>
 
-        {/* Leaderboard List */}
-        <div className="p-2 sm:p-4 space-y-2 sm:space-y-3">
-          {sortedPlayers.map((player, index) => {
+      {/* Lista Glassmorphism Real */}
+      <div className="flex flex-col gap-3 sm:gap-4">
+        {sortedPlayers.length === 0 ? (
+          <div className="bg-card/40 backdrop-blur-2xl border border-border/60 rounded-[2rem] p-16 text-center shadow-[0_8px_40px_rgba(0,0,0,0.04)]">
+            <Trophy className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground font-semibold text-lg">La tabla está vacía</p>
+          </div>
+        ) : (
+          sortedPlayers.map((player, index) => {
             const position = index + 1;
             const positionChange = getPositionChange(position, player);
             const isCurrentUser = player.id === currentUserId;
-            const positionStyle = getPositionDisplay(position);
+            
+            // Estilos dinámicos según posición
+            const isTop1 = position === 1;
+            const isTop2 = position === 2;
+            const isTop3 = position === 3;
+
+            let rankColor = "text-muted-foreground/30";
+            if (isTop1) rankColor = "text-amber-400";
+            if (isTop2) rankColor = "text-slate-400";
+            if (isTop3) rankColor = "text-amber-700/60";
 
             return (
               <div
                 key={player.id}
-                className={`flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-xl transition-all duration-300 border-2 ${
+                className={`group relative flex items-center p-4 sm:p-5 transition-all duration-500 ease-out rounded-3xl ${
                   isCurrentUser
-                    ? 'shadow-mundial scale-[1.02]'
-                    : 'hover:scale-[1.01] shadow-sm'
+                    ? 'bg-card/80 backdrop-blur-2xl border-2 border-primary/20 shadow-[0_8px_30px_rgba(0,0,0,0.08)] scale-[1.01] z-10'
+                    : 'bg-card/40 backdrop-blur-xl border border-border/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:bg-card/70 hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:scale-[1.005]'
                 }`}
-                style={{
-                  background: isCurrentUser
-                    ? 'var(--blob-purple)'
-                    : position <= 3
-                    ? positionStyle.bg
-                    : 'white',
-                  borderColor: isCurrentUser
-                    ? 'var(--primary)'
-                    : position <= 3
-                    ? positionStyle.border
-                    : 'var(--border)'
-                }}
               >
-                {/* Position */}
-                <div className="flex items-center justify-center w-12">
-                  {positionStyle.icon}
+                
+                {/* Indicador de Posición */}
+                <div className={`w-12 sm:w-16 flex-shrink-0 flex justify-center items-center font-score text-3xl sm:text-4xl font-black tracking-tighter ${rankColor}`}>
+                  {position}
                 </div>
 
-                {/* Avatar */}
-                <div className="relative flex-shrink-0">
+                {/* Contenedor Avatar */}
+                <div className="relative mr-4 sm:mr-6 flex-shrink-0">
                   {player.avatar_url ? (
                     <img
                       src={player.avatar_url}
                       alt={player.nombre}
-                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-3 shadow-md"
-                      style={{ borderColor: position <= 3 ? positionStyle.border : 'white' }}
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.25rem] object-cover shadow-sm ring-1 ring-slate-900/5"
                     />
                   ) : (
                     <div
-                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-sm sm:text-base font-bold border-3 shadow-md"
-                      style={{
-                        background:
-                          position === 1
-                            ? 'linear-gradient(135deg, #FFD700, #FFA000)'
-                            : position === 2
-                            ? 'linear-gradient(135deg, #C0C0C0, #9E9E9E)'
-                            : position === 3
-                            ? 'linear-gradient(135deg, #CD7F32, #B87333)'
-                            : 'var(--gradient-primary)',
-                        color: 'white',
-                        borderColor: position <= 3 ? positionStyle.border : 'var(--primary)'
-                      }}
+                      className={`w-14 h-14 sm:w-16 sm:h-16 rounded-[1.25rem] flex items-center justify-center text-lg sm:text-xl font-bold shadow-sm ring-1 ring-border/50 ${
+                        isCurrentUser 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted text-muted-foreground'
+                      }`}
                     >
                       {getAvatarInitials(player.nombre)}
                     </div>
                   )}
 
-                  {/* Position Change Badge */}
+                  {/* Badge de tendencia (Subió/Bajó) - Posicionado como un micro-detalle */}
                   {positionChange !== null && positionChange !== 0 && (
                     <div
-                      className={`absolute -bottom-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-md border-2 border-white ${
-                        positionChange > 0
-                          ? 'bg-green-500'
-                          : 'bg-red-500'
+                      className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-sm border-2 border-white backdrop-blur-md ${
+                        positionChange > 0 ? 'bg-emerald-500' : 'bg-rose-500'
                       }`}
                     >
                       {positionChange > 0 ? (
-                        <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                        <TrendingUp className="w-3 h-3 text-white" strokeWidth={3} />
                       ) : (
-                        <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                        <TrendingDown className="w-3 h-3 text-white" strokeWidth={3} />
                       )}
                     </div>
                   )}
                 </div>
 
-                {/* Player Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 sm:gap-2 mb-1 flex-wrap">
-                    <h3 className="font-bold text-foreground truncate text-base sm:text-lg">
+                {/* Información Principal */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                  <div className="flex items-center gap-3">
+                    <h3 className={`font-bold text-lg sm:text-xl truncate tracking-tight ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
                       {player.nombre}
                     </h3>
                     {isCurrentUser && (
-                      <span
-                        className="px-2 py-0.5 rounded-full text-xs font-bold bg-primary text-primary-foreground"
-                      >
-                        TÚ
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-primary/10 text-primary uppercase tracking-widest">
+                        Tú
                       </span>
                     )}
-                    {position <= 3 && (
-                      <Award className="w-4 h-4" style={{ color: positionStyle.border }} />
-                    )}
                   </div>
-                  {positionChange !== null && (
-                    <p className="text-xs font-medium text-muted-foreground">
+                  
+                  {/* Detalle de tendencia en texto muy sutil */}
+                  {positionChange !== null && positionChange !== 0 && (
+                    <p className="text-[11px] sm:text-xs font-semibold text-muted-foreground mt-0.5">
                       {positionChange > 0
-                        ? `↑ Subió ${positionChange} posicion${positionChange !== 1 ? 'es' : ''}`
-                        : positionChange < 0
-                        ? `↓ Bajó ${Math.abs(positionChange)} posicion${Math.abs(positionChange) !== 1 ? 'es' : ''}`
-                        : '→ Sin cambios'}
+                        ? `↑ Subió ${positionChange} lugar${positionChange > 1 ? 'es' : ''}`
+                        : `↓ Bajó ${Math.abs(positionChange)} lugar${Math.abs(positionChange) > 1 ? 'es' : ''}`}
                     </p>
                   )}
                 </div>
 
-                {/* Score */}
-                <div className="text-right flex-shrink-0">
-                  <div
-                    className="font-score text-3xl sm:text-4xl font-bold leading-none mb-1"
-                    style={{
-                      color: position === 1 ? '#FFD700' : position === 2 ? '#C0C0C0' : position === 3 ? '#CD7F32' : 'var(--primary)'
-                    }}
-                  >
+                {/* Puntaje */}
+                <div className="flex-shrink-0 text-right ml-4 flex flex-col justify-center items-end">
+                  <div className={`font-score text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-none ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
                     {player.puntaje_total}
                   </div>
-                  <div className="text-xs font-bold text-muted-foreground uppercase">pts</div>
+                  <div className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mt-1">
+                    Puntos
+                  </div>
+                </div>
+
+                {/* Ícono de flecha sutil a la derecha, indicando que se podría abrir perfil (simulado estético) */}
+                <div className="hidden sm:flex ml-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <ChevronRight className="w-6 h-6 text-muted-foreground/30" />
                 </div>
               </div>
             );
-          })}
-        </div>
-
-        {/* Empty State */}
-        {sortedPlayers.length === 0 && (
-          <div className="py-16 text-center px-6">
-            <Trophy className="w-20 h-20 mx-auto mb-4 opacity-30 text-primary" />
-            <p className="text-muted-foreground text-xl font-bold mb-2">
-              No hay participantes aún
-            </p>
-            <p className="text-muted-foreground text-sm">
-              Invita a tus amigos para comenzar la competencia
-            </p>
-          </div>
+          })
         )}
       </div>
     </div>
