@@ -35,23 +35,22 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
               </div>
             </div>
 
-            {/* League Code Display */}
-            {leagueCode && (
-              <div
-                className="hidden md:flex items-center gap-3 px-5 py-3 rounded-2xl shadow-md border-2 bg-muted border-border"
-              >
-                <Users className="w-5 h-5 text-primary" />
-                <div className="text-left">
-                  <div className="text-xs font-medium text-muted-foreground">Liga Actual</div>
-                  <div className="text-sm font-mono font-bold text-primary">
-                    {leagueCode}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-1 lg:gap-2">
+              {/* League Code Display */}
+              {leagueCode && (
+                <div
+                  className="flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 rounded-xl shadow-sm border-2 bg-muted/30 border-border mr-1 lg:mr-2"
+                >
+                  <Users className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-primary" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-[8px] lg:text-[9px] font-medium text-muted-foreground leading-none mb-0.5">Liga Actual</span>
+                    <span className="text-xs lg:text-sm font-mono font-bold text-primary leading-none">
+                      {leagueCode}
+                    </span>
+                  </div>
+                </div>
+              )}
               <button
                 onClick={() => onViewChange('matches')}
                 className={`px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
