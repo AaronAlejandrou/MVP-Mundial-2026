@@ -286,7 +286,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading }: any) {
       {/* Instrucciones */}
       <div className="bg-secondary/10 rounded-lg p-4 border-2 border-secondary/30">
         <p className="text-sm text-foreground">
-          <strong>Instrucciones:</strong> Ingresa el resultado real de cada partido. Los puntos se calcularán automáticamente para todos los participantes (5 pts marcador exacto · 3 pts diferencia correcta · 1 pt ganador correcto).
+          <strong>Instrucciones:</strong> Ingresa el resultado real de cada partido. Los puntos se calcularán automáticamente para todos los participantes (5 pts marcador exacto · 2 pts acertar ganador o empate).
         </p>
       </div>
 
