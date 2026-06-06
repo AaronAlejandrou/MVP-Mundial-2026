@@ -35,7 +35,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
   const [golesA, setGolesA] = useState<number>(prediction?.goles_a || 0);
   const [golesB, setGolesB] = useState<number>(prediction?.goles_b || 0);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(!!prediction);
+  const [isSaved, setIsSaved] = useState(false);
   const [showGroupHover, setShowGroupHover] = useState(false);
   const [showTeamAHover, setShowTeamAHover] = useState(false);
   const [showTeamBHover, setShowTeamBHover] = useState(false);
