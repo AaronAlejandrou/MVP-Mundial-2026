@@ -120,6 +120,44 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
         )}
       </div>
 
+      {/* Premio acumulado */}
+      {sortedPlayers.length > 0 && (() => {
+        const pool = sortedPlayers.length * 20;
+        const first = Math.round(pool * 0.70);
+        const second = Math.round(pool * 0.30);
+        return (
+          <div className="mb-6 sm:mb-8 relative overflow-hidden rounded-2xl border border-amber-500/25 bg-card/80 dark:bg-gradient-to-r dark:from-amber-500/8 dark:via-card/60 dark:to-primary/8 backdrop-blur-xl p-4 sm:p-5 shadow-[0_4px_24px_rgba(245,158,11,0.08)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              {/* Izquierda: total */}
+              <div className="flex flex-col justify-center">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">Premio Acumulado</p>
+                <p className="text-5xl sm:text-6xl font-black tracking-tighter leading-none mt-1">
+                  <span className="text-foreground">S/ </span>
+                  <span className="text-amber-500 dark:text-amber-400">{pool.toLocaleString('es-PE')}</span>
+                </p>
+              </div>
+              {/* Derecha: desglose */}
+              <div className="flex gap-2 sm:flex-col sm:gap-2 sm:items-end">
+                <div className="flex-1 sm:flex-none flex sm:flex-row-reverse items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25">
+                  <div className="text-right">
+                    <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-none">S/ {first.toLocaleString('es-PE')}</p>
+                    <p className="text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-wider mt-0.5">1.er Puesto · 70%</p>
+                  </div>
+                  <span className="text-2xl leading-none">🥇</span>
+                </div>
+                <div className="flex-1 sm:flex-none flex sm:flex-row-reverse items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-400/10 border border-slate-400/25">
+                  <div className="text-right">
+                    <p className="text-xl sm:text-2xl font-black text-slate-600 dark:text-slate-300 leading-none">S/ {second.toLocaleString('es-PE')}</p>
+                    <p className="text-[10px] font-bold text-slate-500/70 uppercase tracking-wider mt-0.5">2.do Puesto · 30%</p>
+                  </div>
+                  <span className="text-2xl leading-none">🥈</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Lista Glassmorphism Real */}
       <div className="flex flex-col gap-3 sm:gap-4">
         {sortedPlayers.length === 0 ? (

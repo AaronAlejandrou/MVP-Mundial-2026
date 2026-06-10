@@ -19,7 +19,6 @@ function TermsLeft() {
         </div>
         <ul className="space-y-1 text-xs text-muted-foreground leading-relaxed pl-8">
           <li><span className="font-semibold text-foreground">Cuentas:</span> Cada participante podrá registrarse con una única cuenta, utilizando datos que permitan identificarlo.</li>
-          <li><span className="font-semibold text-foreground">Fecha Límite:</span> Inscripción abierta hasta un día antes del primer partido. Vencido el plazo, no se aceptarán nuevos participantes.</li>
         </ul>
       </div>
 
@@ -133,10 +132,11 @@ function TermsRight() {
 /* ─── Modal: Ranking (2 cols, sin scroll, offset sobre navbar) ─────────── */
 export function TermsModal({ onClose }: TermsProps) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-20 sm:pt-24">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-16 sm:pt-20 pb-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl bg-card border border-border/60 rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.3)] overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-primary/8 to-transparent">
+      <div className="relative w-full max-w-3xl max-h-full bg-card border border-border/60 rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-primary/8 to-transparent flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
               <Trophy className="w-4 h-4 text-primary-foreground" />
@@ -150,11 +150,13 @@ export function TermsModal({ onClose }: TermsProps) {
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+        {/* Content — scrollable si no cabe */}
+        <div className="overflow-y-auto scrollbar-hide flex-1 p-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
           <TermsLeft />
           <TermsRight />
         </div>
-        <div className="px-5 pb-4 pt-1 border-t border-border/30">
+        {/* Footer siempre visible */}
+        <div className="px-5 pb-4 pt-3 border-t border-border/30 flex-shrink-0">
           <button
             onClick={onClose}
             className="w-full py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -188,7 +190,7 @@ export function TermsDrawer({ onClose }: TermsProps) {
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-5 py-4 space-y-4">
           <TermsLeft />
           <div className="border-t border-border/30" />
           <TermsRight />
@@ -220,7 +222,7 @@ export function TermsPanel() {
           <p className="text-[11px] text-muted-foreground font-medium">Polla Mundial 2026</p>
         </div>
       </div>
-      <div className="overflow-y-auto px-5 py-4 space-y-4">
+      <div className="overflow-y-auto scrollbar-hide px-5 py-4 space-y-4">
         <TermsLeft />
         <div className="border-t border-border/30" />
         <TermsRight />
