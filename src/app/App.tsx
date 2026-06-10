@@ -14,6 +14,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { GROUP_STAGE_MATCHES } from '../data/groupStageMatches';
 import { getResolvedKnockoutMatches } from '../data/knockoutMatches';
 import { apiFetch } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 export default function App() {
   const { toasts, toast, remove: removeToast } = useToast();
@@ -158,15 +159,32 @@ export default function App() {
   const loadLeaderboard = useCallback(async () => {
     if (!currentLeague || !accessToken) return;
     try {
-      const res = await apiFetch(`/leagues/${currentLeague.id}/leaderboard`, { token: accessToken });
-      if (res.ok) {
-        const data = await res.json();
+      const [leaderboardRes, exactRes] = await Promise.all([
+        apiFetch(`/leagues/${currentLeague.id}/leaderboard`, { token: accessToken }),
+        supabase
+          .from('predictions')
+          .select('user_id')
+          .eq('league_id', currentLeague.id)
+          .eq('puntos_obtenidos', 5),
+      ]);
+
+      // Build a map: userId → count of exact scores
+      const exactMap: Record<string, number> = {};
+      if (!exactRes.error && exactRes.data) {
+        for (const row of exactRes.data) {
+          exactMap[row.user_id] = (exactMap[row.user_id] || 0) + 1;
+        }
+      }
+
+      if (leaderboardRes.ok) {
+        const data = await leaderboardRes.json();
         setLeaderboard(
           (data.leaderboard || [])
             .map((p: any) => ({
               id: p.userId,
               nombre: p.nombre,
               puntaje_total: p.puntajeTotal,
+              marcadores_exactos: exactMap[p.userId] || 0,
             }))
             .filter((p: any) => p.id !== currentLeague.admin_id)
         );

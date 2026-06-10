@@ -8,6 +8,7 @@ interface LeaderboardPlayer {
   avatar_url?: string;
   puntaje_total: number;
   posicion_anterior?: number;
+  marcadores_exactos?: number;
 }
 
 interface League {
@@ -26,7 +27,10 @@ interface LeaderboardProps {
 export function Leaderboard({ players, currentUserId, currentLeague }: LeaderboardProps) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
-  const sortedPlayers = [...players].sort((a, b) => b.puntaje_total - a.puntaje_total);
+  const sortedPlayers = [...players].sort((a, b) => {
+    if (b.puntaje_total !== a.puntaje_total) return b.puntaje_total - a.puntaje_total;
+    return (b.marcadores_exactos ?? 0) - (a.marcadores_exactos ?? 0);
+  });
 
   const getPositionChange = (currentPos: number, player: LeaderboardPlayer) => {
     if (!player.posicion_anterior) return null;
@@ -245,14 +249,21 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
                     )}
                   </div>
                   
-                  {/* Detalle de tendencia en texto muy sutil */}
-                  {positionChange !== null && positionChange !== 0 && (
-                    <p className="text-[11px] sm:text-xs font-semibold text-muted-foreground mt-0.5">
-                      {positionChange > 0
-                        ? `↑ Subió ${positionChange} lugar${positionChange > 1 ? 'es' : ''}`
-                        : `↓ Bajó ${Math.abs(positionChange)} lugar${Math.abs(positionChange) > 1 ? 'es' : ''}`}
-                    </p>
-                  )}
+                  {/* Exactos + tendencia */}
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {(player.marcadores_exactos ?? 0) > 0 && (
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                        ⚽ {player.marcadores_exactos} exacto{(player.marcadores_exactos ?? 0) !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {positionChange !== null && positionChange !== 0 && (
+                      <p className="text-[11px] font-semibold text-muted-foreground">
+                        {positionChange > 0
+                          ? `↑ Subió ${positionChange} lugar${positionChange > 1 ? 'es' : ''}`
+                          : `↓ Bajó ${Math.abs(positionChange)} lugar${Math.abs(positionChange) > 1 ? 'es' : ''}`}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Puntaje */}
