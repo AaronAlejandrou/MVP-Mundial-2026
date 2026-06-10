@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, Trophy, ChevronRight, Share2, Check, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, Trophy, ChevronRight, Share2, Check, Users, FileText } from 'lucide-react';
+import { TermsModal } from './TermsModal';
 
 interface LeaderboardPlayer {
   id: string;
@@ -24,6 +25,7 @@ interface LeaderboardProps {
 
 export function Leaderboard({ players, currentUserId, currentLeague }: LeaderboardProps) {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const sortedPlayers = [...players].sort((a, b) => b.puntaje_total - a.puntaje_total);
 
   const getPositionChange = (currentPos: number, player: LeaderboardPlayer) => {
@@ -51,7 +53,9 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
 
   return (
     <div className="relative w-full max-w-4xl mx-auto py-8 sm:py-12 px-4 sm:px-6">
-      
+
+      {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+
       {/* Main content starts directly */}
 
       {/* Cabecera minimalista y Premium */}
@@ -79,9 +83,16 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
           </div>
         </div>
         
-        {/* Botón Invitar */}
+        {/* Botones Invitar + Bases */}
         {(currentLeague?.invitationCode || currentLeague?.codigo_invitacion) && (
           <div className="flex-shrink-0 flex flex-col items-end gap-2">
+            <button
+              onClick={() => setShowTerms(true)}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:scale-105 border border-border/60"
+            >
+              <FileText className="w-4 h-4" />
+              Ver Bases
+            </button>
             <button
               onClick={copyLink}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm ${

@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { MatchesTimeline } from './components/MatchesTimeline';
 import { Leaderboard } from './components/Leaderboard';
 import { LeagueManager } from './components/LeagueManager';
+import { TermsPanel } from './components/TermsModal';
 import { Auth } from './components/Auth';
 import { ThemeToggle } from './components/ThemeToggle';
 import { KnockoutBracket } from './components/KnockoutBracket';
@@ -337,7 +338,8 @@ export default function App() {
             <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px]" />
           </div>
 
-          <div className="w-full max-w-lg mx-auto py-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="w-full max-w-5xl mx-auto py-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            {/* Title */}
             <div className="text-center mb-8">
               <h1 className="text-3xl font-black text-foreground tracking-tight mb-3 drop-shadow-md">
                 Polla Mundial <span className="text-primary">2026</span>
@@ -349,29 +351,40 @@ export default function App() {
               </p>
             </div>
 
-            <LeagueManager
-              leagueExists={leagueExists ?? false}
-              isAdmin={currentUser?.is_admin === true}
-              onCreateLeague={handleCreateLeague}
-              onJoinLeague={handleJoinLeagueByCode}
-              invitationCode={invitationCode || undefined}
-            />
+            {/* Two-column layout: form left, T&C right */}
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-            {/* Notorious Theme Selector */}
-            <div className="mt-8 bg-card/60 backdrop-blur-xl border border-border/50 p-5 rounded-3xl flex flex-col items-center gap-3 shadow-mundial-lg transition-all hover:bg-card/80">
-              <p className="text-sm font-bold text-foreground text-center">
-                Personaliza tu experiencia:<br/>
-                <span className="text-xs text-muted-foreground font-medium">Elige el tema claro u oscuro antes de entrar</span>
-              </p>
-              <div className="transform scale-125 mt-1">
-                <ThemeToggle />
+              {/* Left: form + theme + logout */}
+              <div className="w-full lg:w-96 flex-shrink-0 space-y-4">
+                <LeagueManager
+                  leagueExists={leagueExists ?? false}
+                  isAdmin={currentUser?.is_admin === true}
+                  onCreateLeague={handleCreateLeague}
+                  onJoinLeague={handleJoinLeagueByCode}
+                  invitationCode={invitationCode || undefined}
+                />
+
+                <div className="bg-card/60 backdrop-blur-xl border border-border/50 p-5 rounded-3xl flex flex-col items-center gap-3 shadow-mundial-lg transition-all hover:bg-card/80">
+                  <p className="text-sm font-bold text-foreground text-center">
+                    Personaliza tu experiencia:<br/>
+                    <span className="text-xs text-muted-foreground font-medium">Elige el tema claro u oscuro antes de entrar</span>
+                  </p>
+                  <div className="transform scale-125 mt-1">
+                    <ThemeToggle />
+                  </div>
+                </div>
+
+                <div className="text-center">
+                  <button onClick={handleLogout} className="text-sm text-muted-foreground hover:text-destructive transition-colors font-bold px-4 py-2 rounded-xl hover:bg-destructive/10">
+                    Cerrar sesión
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-8 text-center">
-              <button onClick={handleLogout} className="text-sm text-muted-foreground hover:text-destructive transition-colors font-bold px-4 py-2 rounded-xl hover:bg-destructive/10">
-                Cerrar sesión
-              </button>
+              {/* Right: T&C always visible */}
+              <div className="w-full lg:flex-1">
+                <TermsPanel />
+              </div>
             </div>
           </div>
         </div>
