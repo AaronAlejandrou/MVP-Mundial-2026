@@ -39,12 +39,21 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
   const [showGroupHover, setShowGroupHover] = useState(false);
   const [showTeamAHover, setShowTeamAHover] = useState(false);
   const [showTeamBHover, setShowTeamBHover] = useState(false);
+  const [tick, setTick] = useState(0);
 
-  const { minutesUntilMatch, isLocked, formattedTime } = useMemo(() => {
+  // Tick every second so the countdown is live
+  useEffect(() => {
+    if (match.estado !== 'pendiente') return;
+    const id = setInterval(() => setTick(t => t + 1), 1_000);
+    return () => clearInterval(id);
+  }, [match.estado]);
+
+  const { minutesUntilMatch, secondsUntilMatch, isLocked, formattedTime } = useMemo(() => {
     const matchDate = new Date(match.fecha_hora);
     const now = new Date();
     const diffMs = matchDate.getTime() - now.getTime();
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
 
     const locked = diffMinutes <= 60 || match.estado !== 'pendiente';
 
@@ -52,10 +61,32 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
 
     return {
       minutesUntilMatch: diffMinutes,
+      secondsUntilMatch: diffSeconds,
       isLocked: locked,
       formattedTime: timeStr
     };
-  }, [match.fecha_hora, match.estado]);
+  }, [match.fecha_hora, match.estado, tick]);
+
+  const formatCountdown = (totalSeconds: number): string => {
+    if (totalSeconds <= 0) return '';
+    const d = Math.floor(totalSeconds / 86400);
+    const h = Math.floor((totalSeconds % 86400) / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m ${String(s).padStart(2, '0')}s`;
+    return `${m}m ${String(s).padStart(2, '0')}s`;
+  };
+
+  // Color escalates toward red only when no prediction saved
+  const countdownClass = useMemo(() => {
+    if (isLocked || minutesUntilMatch <= 0) return '';
+    if (prediction) return 'text-muted-foreground/40';
+    if (minutesUntilMatch > 1440) return 'text-muted-foreground/40';
+    if (minutesUntilMatch > 360)  return 'text-muted-foreground/60';
+    if (minutesUntilMatch > 180)  return 'text-amber-400/70';
+    return 'text-rose-400/90';
+  }, [minutesUntilMatch, isLocked, prediction]);
 
   useEffect(() => {
     if (prediction) {
@@ -117,6 +148,14 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
               <span className="text-muted-foreground">•</span>
               <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
               <span className="text-muted-foreground text-xs truncate">{match.estadio}</span>
+              {match.estado === 'pendiente' && !isLocked && secondsUntilMatch > 0 && (
+                <>
+                  <span className="text-muted-foreground/40 flex-shrink-0">•</span>
+                  <span className={`text-[10px] font-semibold tabular-nums flex-shrink-0 transition-colors duration-1000 ${countdownClass}`}>
+                    {formatCountdown(secondsUntilMatch)}
+                  </span>
+                </>
+              )}
             </div>
             {/* Group Button with Hover */}
             <div className="relative flex-shrink-0" id={`group-btn-${match.id}`}>
