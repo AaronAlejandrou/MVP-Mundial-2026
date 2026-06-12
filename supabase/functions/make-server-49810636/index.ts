@@ -244,7 +244,12 @@ app.post("/make-server-49810636/matches/:matchId/result", requireAuth, async (c)
     const { data: league } = await db.from("leagues").select("admin_id").eq("id", leagueId).maybeSingle();
     if (!league) return c.json({ error: "Liga no encontrada" }, 404);
     if (league.admin_id !== user.id) return c.json({ error: "Solo el admin" }, 403);
-    await db.from("match_results").upsert({ match_id:matchId, league_id:leagueId, goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() });
+    const { data: existingResult } = await db.from("match_results").select("id").eq("match_id", matchId).eq("league_id", leagueId).maybeSingle();
+    if (existingResult) {
+      await db.from("match_results").update({ goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() }).eq("id", existingResult.id);
+    } else {
+      await db.from("match_results").insert({ match_id:matchId, league_id:leagueId, goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() });
+    }
     if (estado === "finalizado") {
       await calculatePoints(matchId, leagueId, golesA, golesB);
       
@@ -717,15 +722,16 @@ app.get("/make-server-49810636/bracket/fix-knockout", async (c) => {
 async function calculatePoints(matchId: number, leagueId: string, actualA: number, actualB: number) {
   try {
     const db = getDb();
-    const { data: preds } = await db.from("predictions").select("id, user_id, goles_a, goles_b").eq("match_id", matchId).eq("league_id", leagueId);
+    const { data: preds } = await db.from("predictions").select("id, user_id, goles_a, goles_b, puntos_obtenidos").eq("match_id", matchId).eq("league_id", leagueId);
     if (!preds?.length) return;
     for (const p of preds) {
       let pts = 0;
       if (p.goles_a === actualA && p.goles_b === actualB) { pts = 5; }
       else if (Math.sign(p.goles_a - p.goles_b) === Math.sign(actualA - actualB)) { pts = 2; }
+      const oldPts = p.puntos_obtenidos ?? 0;
       await db.from("predictions").update({ puntos_obtenidos: pts }).eq("id", p.id);
       const { data: score } = await db.from("scores").select("total").eq("league_id", leagueId).eq("user_id", p.user_id).maybeSingle();
-      await db.from("scores").upsert({ league_id:leagueId, user_id:p.user_id, total:(score?.total||0)+pts, updated_at:new Date().toISOString() });
+      await db.from("scores").upsert({ league_id:leagueId, user_id:p.user_id, total:(score?.total||0) - oldPts + pts, updated_at:new Date().toISOString() });
     }
   } catch(err) { console.error("calculatePoints error:", err); }
 }
