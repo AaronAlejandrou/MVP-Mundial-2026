@@ -55,7 +55,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     const diffSeconds = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffSeconds / 60);
 
-    const locked = diffMinutes <= 30 || match.estado !== 'pendiente';
+    const locked = diffMinutes <= 25 || match.estado !== 'pendiente';
 
     const timeStr = format(matchDate, 'HH:mm');
 
