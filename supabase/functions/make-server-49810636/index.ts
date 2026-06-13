@@ -375,12 +375,17 @@ app.post("/make-server-49810636/matches/:matchId/result", requireAuth, async (c)
     if (!league) return c.json({ error: "Liga no encontrada" }, 404);
     if (league.admin_id !== user.id) return c.json({ error: "Solo el admin" }, 403);
     const { data: existingResult } = await db.from("match_results").select("id").eq("match_id", matchId).eq("league_id", leagueId).maybeSingle();
+    let writeError: any = null;
     if (existingResult) {
-      await db.from("match_results").update({ goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() }).eq("id", existingResult.id);
+      const { error } = await db.from("match_results").update({ goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() }).eq("id", existingResult.id);
+      writeError = error;
     } else {
-      await db.from("match_results").insert({ match_id:matchId, league_id:leagueId, goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() });
+      const { error } = await db.from("match_results").insert({ match_id:matchId, league_id:leagueId, goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() });
+      writeError = error;
     }
-    if (estado === "finalizado" || estado === "en_juego") {
+    // Si la base rechaza la escritura, fallar de verdad (no calcular puntos fantasma ni devolver 200 falso)
+    if (writeError) return c.json({ error: "No se pudo guardar el resultado", details: writeError.message }, 500);
+    if (estado === "finalizado" || estado === "en_curso") {
       await calculatePoints(matchId, leagueId, golesA, golesB);
 
       // Auto-advance knockout winners — solo al finalizar, no en vivo
@@ -564,7 +569,7 @@ app.get("/make-server-49810636/match-predictions/ranking-snapshot", requireAuth,
       .eq("estado", "finalizado")
       .lte("updated_at", cutoff);
     const afterIds = new Set<number>((finals || []).map((r: any) => r.match_id));
-    afterIds.add(matchId); // incluir el objetivo aunque esté en_juego (puntos provisionales)
+    afterIds.add(matchId); // incluir el objetivo aunque esté en_curso (puntos provisionales)
     const afterIdArr = Array.from(afterIds);
 
     // Predicciones de todos en esos partidos + miembros (para poblar incluso a los de 0 pts)

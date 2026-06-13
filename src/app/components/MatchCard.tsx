@@ -16,7 +16,7 @@ interface Match {
   grupo: string;
   goles_a?: number | null;
   goles_b?: number | null;
-  estado?: 'pendiente' | 'en_juego' | 'finalizado';
+  estado?: 'pendiente' | 'en_curso' | 'finalizado';
 }
 
 interface Prediction {
@@ -366,12 +366,14 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
         )}
 
         {/* Resultado — depende del estado real (no del corte de 120 min), solo cambia el label */}
-        {match.goles_a !== null && match.goles_b !== null && (match.estado === 'finalizado' || match.estado === 'en_juego' || isLive) && (
+        {match.goles_a !== null && match.goles_b !== null && (match.estado === 'finalizado' || match.estado === 'en_curso' || isLive) && (
           <div className="px-3 sm:px-5 pb-3 sm:pb-5 space-y-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-foreground/5 border border-border">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                  {match.estado === 'finalizado' || !isLive ? 'Resultado' : 'Resultado en vivo'}
+                  {match.estado === 'finalizado' || !isLive
+                    ? 'Resultado'
+                    : <>Resultado <span className="text-rose-500">en vivo</span></>}
                 </span>
                 <span className="font-score text-xl font-bold text-foreground">
                   {match.goles_a} – {match.goles_b}
@@ -409,6 +411,9 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                         ? 'Resultado ganador / Empate'
                         : 'Ningún acierto'}
                     </span>
+                    {match.estado !== 'finalizado' && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-rose-500 mt-1">Provisional · por ahora</span>
+                    )}
                   </div>
                 )}
 
@@ -435,7 +440,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
         )}
 
         {/* Partido bloqueado — solo cuando no hay resultado (en vivo o post-120min) que mostrar */}
-        {isLocked && match.estado !== 'finalizado' && !((isLive || match.estado === 'en_juego') && match.goles_a !== null && match.goles_b !== null) && (
+        {isLocked && match.estado !== 'finalizado' && !((isLive || match.estado === 'en_curso') && match.goles_a !== null && match.goles_b !== null) && (
           <div className="px-3 sm:px-5 pb-3 sm:pb-5">
             <div className={`flex items-center gap-2 rounded-lg border-2 border-destructive/40 overflow-hidden ${canShowModal ? '' : ''}`}>
               <div className="flex items-center justify-center gap-2 py-2 sm:py-3 px-3 sm:px-4 flex-1 bg-destructive/5 text-destructive">

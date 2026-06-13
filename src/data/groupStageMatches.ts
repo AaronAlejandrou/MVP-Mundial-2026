@@ -12,7 +12,7 @@ export interface Match {
   grupo: string;
   goles_a?: number | null;
   goles_b?: number | null;
-  estado?: 'pendiente' | 'en_juego' | 'finalizado';
+  estado?: 'pendiente' | 'en_curso' | 'finalizado';
 }
 
 export const GROUP_STAGE_MATCHES: Match[] = [

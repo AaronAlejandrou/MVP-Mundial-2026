@@ -169,6 +169,7 @@ export function PlayerPredictionsModal({ player, leagueId, accessToken, currentU
                       {dateItems.map((item: any, i: number) => {
                         const { match, goles_a, goles_b, puntos_obtenidos, resultado } = item;
                         const isFinished = resultado?.estado === 'finalizado';
+                        const isLiveResult = resultado?.estado === 'en_curso';
                         const pts = puntos_obtenidos ?? null;
 
                         return (
@@ -196,7 +197,7 @@ export function PlayerPredictionsModal({ player, leagueId, accessToken, currentU
                               </div>
                             </div>
 
-                            {/* Result row */}
+                            {/* Resultado — finalizado */}
                             {isFinished && resultado && (
                               <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50">
                                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Resultado</span>
@@ -215,8 +216,29 @@ export function PlayerPredictionsModal({ player, leagueId, accessToken, currentU
                               </div>
                             )}
 
-                            {/* Locked but not finished */}
-                            {!isFinished && (
+                            {/* Resultado — en vivo (provisional) */}
+                            {isLiveResult && resultado && (
+                              <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                                  Resultado <span className="text-rose-500">en vivo</span>
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-score text-xs font-bold text-foreground">{resultado.goles_a}–{resultado.goles_b}</span>
+                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                    pts === 5
+                                      ? 'bg-amber-500/15 text-amber-500'
+                                      : pts === 2
+                                      ? 'bg-emerald-500/15 text-emerald-500'
+                                      : 'bg-muted text-muted-foreground'
+                                  }`}>
+                                    {pts === 5 ? '+5' : pts === 2 ? '+2' : '+0'} · prov.
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Sin resultado aún */}
+                            {!resultado && (
                               <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50">
                                 <span className="text-[10px] text-muted-foreground/60">En curso o próximamente</span>
                               </div>

@@ -12,7 +12,7 @@ export interface Match {
   grupo: string;
   goles_a?: number | null;
   goles_b?: number | null;
-  estado?: 'pendiente' | 'en_juego' | 'finalizado';
+  estado?: 'pendiente' | 'en_curso' | 'finalizado';
 }
 
 export interface Prediction {
@@ -172,4 +172,4 @@ export function isValidLeagueCode(code: string): boolean {
 
 export type ViewType = 'matches' | 'leaderboard' | 'leagues';
 
-export type MatchStatus = 'pendiente' | 'en_juego' | 'finalizado';
+export type MatchStatus = 'pendiente' | 'en_curso' | 'finalizado';

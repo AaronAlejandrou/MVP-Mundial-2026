@@ -203,7 +203,7 @@ export default function App() {
       const now = Date.now();
       const anyLive = liveMatchesRef.current.some((m: any) => {
         const start = new Date(m.fecha_hora).getTime();
-        return m.estado === 'en_juego' || (now >= start && now < start + 120 * 60 * 1000 && m.estado !== 'finalizado');
+        return m.estado === 'en_curso' || (now >= start && now < start + 120 * 60 * 1000 && m.estado !== 'finalizado');
       });
       if (anyLive) refreshLiveData();
     }, 30000);
@@ -330,7 +330,7 @@ export default function App() {
     ...m,
     goles_a: matchResults[m.id]?.golesA ?? null,
     goles_b: matchResults[m.id]?.golesB ?? null,
-    estado: (matchResults[m.id]?.estado ?? m.estado ?? 'pendiente') as 'pendiente'|'en_juego'|'finalizado',
+    estado: (matchResults[m.id]?.estado ?? m.estado ?? 'pendiente') as 'pendiente'|'en_curso'|'finalizado',
   }));
   liveMatchesRef.current = enrichedMatches;
 

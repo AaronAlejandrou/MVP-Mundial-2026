@@ -22,6 +22,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
   const [isLoading, setIsLoading] = useState(false);
   const [resultSaved, setResultSaved] = useState<number | null>(null);
   const [resultError, setResultError] = useState<string | null>(null);
+  const [savingMatchId, setSavingMatchId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!externalPending) loadPendingUsers();
@@ -77,6 +78,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
 
   const handleUpdateResult = async (matchId: number, golesA: number, golesB: number, estado: string) => {
     setIsLoading(true);
+    setSavingMatchId(matchId);
     try {
       const response = await apiFetch(`/matches/${matchId}/result`, {
         method: 'POST',
@@ -102,6 +104,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
       setResultError('Error de conexión');
     } finally {
       setIsLoading(false);
+      setSavingMatchId(null);
     }
   };
 
@@ -197,6 +200,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
               matchResults={matchResults}
               onUpdateResult={handleUpdateResult}
               isLoading={isLoading}
+              savingMatchId={savingMatchId}
               baseMatches={baseMatches}
             />
           )}
@@ -225,7 +229,7 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
   );
 }
 
-function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches }: any) {
+function MatchResultsTab({ matchResults, onUpdateResult, isLoading, savingMatchId, baseMatches }: any) {
   const [editingMatch, setEditingMatch] = useState<number | null>(null);
   const [golesA, setGolesA] = useState(0);
   const [golesB, setGolesB] = useState(0);
@@ -239,7 +243,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches 
     setGolesB(result?.golesB ?? 0);
   };
 
-  const saveResult = (matchId: number, estado: 'en_juego' | 'finalizado') => {
+  const saveResult = (matchId: number, estado: 'en_curso' | 'finalizado') => {
     onUpdateResult(matchId, golesA, golesB, estado);
     setEditingMatch(null);
   };
@@ -247,7 +251,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches 
   const getEstadoBadge = (result: any) => {
     if (!result) return { label: 'Pendiente', class: 'bg-muted text-muted-foreground' };
     if (result.estado === 'finalizado') return { label: 'Finalizado', class: 'bg-secondary/20 text-secondary' };
-    if (result.estado === 'en_juego') return { label: 'En vivo', class: 'bg-rose-500/20 text-rose-400' };
+    if (result.estado === 'en_curso') return { label: 'En vivo', class: 'bg-rose-500/20 text-rose-400' };
     return { label: 'Pendiente', class: 'bg-muted text-muted-foreground' };
   };
 
@@ -346,7 +350,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches 
                     key={match.id}
                     className={`bg-card rounded-xl border-2 p-3 sm:p-4 transition-all shadow-sm ${
                       result?.estado === 'finalizado' ? 'border-secondary/30 bg-secondary/5' :
-                      result?.estado === 'en_juego' ? 'border-rose-500/30 bg-rose-500/5' :
+                      result?.estado === 'en_curso' ? 'border-rose-500/30 bg-rose-500/5' :
                       'border-border'
                     }`}
                   >
@@ -402,10 +406,15 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches 
 
                     {/* Acciones */}
                     <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-border/40">
-                      {isEditing ? (
+                      {savingMatchId === match.id ? (
+                        <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                          <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                          Procesando… puede tardar unos segundos
+                        </div>
+                      ) : isEditing ? (
                         <>
                           <button
-                            onClick={() => saveResult(match.id, 'en_juego')}
+                            onClick={() => saveResult(match.id, 'en_curso')}
                             disabled={isLoading}
                             className="flex items-center gap-1.5 px-3 py-2 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-lg font-bold text-xs hover:bg-rose-500/25 transition-colors disabled:opacity-50"
                           >
@@ -426,7 +435,7 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches 
                             Cancelar
                           </button>
                         </>
-                      ) : result?.estado === 'en_juego' ? (
+                      ) : result?.estado === 'en_curso' ? (
                         <>
                           <button
                             onClick={() => startEdit(match.id)}
