@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { MatchesTimeline } from './components/MatchesTimeline';
 import { Leaderboard } from './components/Leaderboard';
@@ -14,7 +14,6 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { GROUP_STAGE_MATCHES } from '../data/groupStageMatches';
 import { getResolvedKnockoutMatches } from '../data/knockoutMatches';
 import { apiFetch } from '../lib/api';
-import { supabase } from '../lib/supabase';
 
 export default function App() {
   const { toasts, toast, remove: removeToast } = useToast();
@@ -40,6 +39,9 @@ export default function App() {
 
   const [bracketLocked, setBracketLocked] = useState(false);
   const [knockoutTeams, setKnockoutTeams] = useState<Record<number, { team1: string; team2: string }>>({});
+
+  // Snapshot de los partidos enriquecidos, leído por el intervalo de auto-refresco
+  const liveMatchesRef = useRef<any[]>([]);
 
   // ── Init ────────────────────────────────────────────────────────────────
 
@@ -159,38 +161,54 @@ export default function App() {
   const loadLeaderboard = useCallback(async () => {
     if (!currentLeague || !accessToken) return;
     try {
-      const [leaderboardRes, exactRes] = await Promise.all([
-        apiFetch(`/leagues/${currentLeague.id}/leaderboard`, { token: accessToken }),
-        supabase
-          .from('predictions')
-          .select('user_id')
-          .eq('league_id', currentLeague.id)
-          .eq('puntos_obtenidos', 5),
-      ]);
-
-      // Build a map: userId → count of exact scores
-      const exactMap: Record<string, number> = {};
-      if (!exactRes.error && exactRes.data) {
-        for (const row of exactRes.data) {
-          exactMap[row.user_id] = (exactMap[row.user_id] || 0) + 1;
-        }
-      }
-
-      if (leaderboardRes.ok) {
-        const data = await leaderboardRes.json();
+      const res = await apiFetch(`/leagues/${currentLeague.id}/leaderboard`, { token: accessToken });
+      if (res.ok) {
+        const data = await res.json();
         setLeaderboard(
           (data.leaderboard || [])
             .map((p: any) => ({
               id: p.userId,
               nombre: p.nombre,
               puntaje_total: p.puntajeTotal,
-              marcadores_exactos: exactMap[p.userId] || 0,
+              marcadores_exactos: p.marcadoresExactos || 0,
+              posicion_anterior: p.posicionAnterior,
             }))
             .filter((p: any) => p.id !== currentLeague.admin_id)
         );
       }
     } catch { /* silent */ }
   }, [currentLeague?.id, accessToken]);
+
+  // Refresco ligero para partidos en vivo: SOLO resultados + ranking.
+  // No recarga predicciones ni bracket, así nunca pisa lo que un usuario esté
+  // editando en un partido abierto (las predicciones solo cambian al guardar).
+  const refreshLiveData = useCallback(async () => {
+    if (!currentLeague || !accessToken) return;
+    try {
+      const res = await apiFetch(`/matches/results?leagueId=${currentLeague.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMatchResults(data.results || {});
+      }
+    } catch { /* silent */ }
+    await loadLeaderboard();
+  }, [currentLeague?.id, accessToken, loadLeaderboard]);
+
+  // Auto-refresco: mientras haya un partido en su ventana en vivo, refresca cada 30s.
+  // No hay realtime; esto mantiene marcador y ranking al día sin recargar manualmente.
+  // Solo corre con la pestaña visible y solo dispara red si hay algo en vivo.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      const anyLive = liveMatchesRef.current.some((m: any) => {
+        const start = new Date(m.fecha_hora).getTime();
+        return m.estado === 'en_juego' || (now >= start && now < start + 120 * 60 * 1000 && m.estado !== 'finalizado');
+      });
+      if (anyLive) refreshLiveData();
+    }, 30000);
+    return () => clearInterval(id);
+  }, [refreshLiveData]);
 
   // Removed the useEffect for bracket phase since it's now in loadUserData
 
@@ -314,6 +332,7 @@ export default function App() {
     goles_b: matchResults[m.id]?.golesB ?? null,
     estado: (matchResults[m.id]?.estado ?? m.estado ?? 'pendiente') as 'pendiente'|'en_juego'|'finalizado',
   }));
+  liveMatchesRef.current = enrichedMatches;
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -450,6 +469,9 @@ export default function App() {
             onSavePrediction={handleSavePrediction}
             onViewGroup={handleViewGroup}
             onViewTeam={handleViewTeam}
+            leagueId={currentLeague?.id}
+            accessToken={accessToken}
+            currentUserId={currentUser?.id}
           />
         )}
         {currentView === 'knockout' && (
@@ -474,7 +496,7 @@ export default function App() {
         )}
         {currentView === 'leaderboard' && (
           <div className="max-w-3xl mx-auto">
-            <Leaderboard players={leaderboard} currentUserId={currentUser.id} currentLeague={currentLeague} />
+            <Leaderboard players={leaderboard} currentUserId={currentUser.id} currentLeague={currentLeague} accessToken={accessToken} />
           </div>
         )}
       </Layout>

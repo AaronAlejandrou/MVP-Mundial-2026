@@ -28,9 +28,12 @@ interface MatchesTimelineProps {
   onSavePrediction: (matchId: number, golesA: number, golesB: number) => Promise<void>;
   onViewGroup?: (grupo: string) => void;
   onViewTeam?: (team: string, grupo: string) => void;
+  leagueId?: string;
+  accessToken?: string;
+  currentUserId?: string;
 }
 
-export function MatchesTimeline({ matches, predictions, onSavePrediction, onViewGroup, onViewTeam }: MatchesTimelineProps) {
+export function MatchesTimeline({ matches, predictions, onSavePrediction, onViewGroup, onViewTeam, leagueId, accessToken, currentUserId }: MatchesTimelineProps) {
   const todayRef = useRef<HTMLDivElement>(null);
 
   // Agrupar partidos por fecha
@@ -109,7 +112,7 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
             Suma puntos automáticamente cuando finalicen los partidos.
             <br />
             <span className="inline-block mt-1.5 px-2 py-0.5 bg-background rounded border border-border text-xs font-bold text-foreground">
-              Tus pronósticos se bloquean 1 hora antes de cada partido
+              Tus pronósticos se bloquean 30 minutos antes de cada partido
             </span>
           </p>
         </div>
@@ -169,6 +172,10 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
                     onSavePrediction={onSavePrediction}
                     onViewGroup={onViewGroup}
                     onViewTeam={onViewTeam}
+                    leagueId={leagueId}
+                    accessToken={accessToken}
+                    currentUserId={currentUserId}
+                    allMatches={matches}
                   />
                 ))}
             </div>

@@ -1,11 +1,21 @@
 import { CountryFlag } from './CountryFlag';
 import { GROUP_STANDINGS } from '../../data/groupStandingsData';
 
-interface GroupHoverCardProps {
+interface Match {
+  equipo_a: string;
+  equipo_b: string;
   grupo: string;
+  goles_a?: number | null;
+  goles_b?: number | null;
+  estado?: string;
 }
 
-export function GroupHoverCard({ grupo }: GroupHoverCardProps) {
+interface GroupHoverCardProps {
+  grupo: string;
+  allMatches?: Match[];
+}
+
+export function GroupHoverCard({ grupo, allMatches = [] }: GroupHoverCardProps) {
   const groupData = GROUP_STANDINGS.find(g => g.grupo === grupo);
 
   if (!groupData) {
@@ -16,12 +26,40 @@ export function GroupHoverCard({ grupo }: GroupHoverCardProps) {
     );
   }
 
-  // Ordenar equipos
-  const sortedTeams = [...groupData.equipos].sort((a, b) => {
-    if (b.pts !== a.pts) return b.pts - a.pts;
-    if (b.dif !== a.dif) return b.dif - a.dif;
-    return b.gf - a.gf;
-  });
+  // Calcular standings reales desde partidos finalizados
+  const statsMap: Record<string, { pj: number; gf: number; gc: number; dif: number; pts: number }> = {};
+
+  for (const team of groupData.equipos) {
+    statsMap[team.equipo] = { pj: 0, gf: 0, gc: 0, dif: 0, pts: 0 };
+  }
+
+  const finished = allMatches.filter(m => m.grupo === grupo && m.estado === 'finalizado');
+  for (const m of finished) {
+    const ga = m.goles_a ?? 0;
+    const gb = m.goles_b ?? 0;
+    if (statsMap[m.equipo_a]) {
+      statsMap[m.equipo_a].pj += 1;
+      statsMap[m.equipo_a].gf += ga;
+      statsMap[m.equipo_a].gc += gb;
+      statsMap[m.equipo_a].dif += ga - gb;
+      statsMap[m.equipo_a].pts += ga > gb ? 3 : ga === gb ? 1 : 0;
+    }
+    if (statsMap[m.equipo_b]) {
+      statsMap[m.equipo_b].pj += 1;
+      statsMap[m.equipo_b].gf += gb;
+      statsMap[m.equipo_b].gc += ga;
+      statsMap[m.equipo_b].dif += gb - ga;
+      statsMap[m.equipo_b].pts += gb > ga ? 3 : ga === gb ? 1 : 0;
+    }
+  }
+
+  const sortedTeams = groupData.equipos
+    .map(t => ({ equipo: t.equipo, ...statsMap[t.equipo] }))
+    .sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      if (b.dif !== a.dif) return b.dif - a.dif;
+      return b.gf - a.gf;
+    });
 
   return (
     <div className="bg-card rounded-lg border-2 border-primary shadow-mundial-lg min-w-[280px]">
@@ -93,12 +131,6 @@ export function GroupHoverCard({ grupo }: GroupHoverCardProps) {
         </table>
       </div>
 
-      {/* Footer */}
-      <div className="bg-muted px-3 py-2 border-t border-border">
-        <p className="text-xs text-center text-muted-foreground font-medium">
-          Click para ver tabla completa
-        </p>
-      </div>
     </div>
   );
 }

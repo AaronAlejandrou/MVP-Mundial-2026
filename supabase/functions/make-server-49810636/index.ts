@@ -26,9 +26,83 @@ function isAdmin(email: string): boolean {
   return adminEmail ? email === adminEmail : false;
 }
 
+// ── Fechas de partidos — DEBE mantenerse en sync con src/data/groupStageMatches.ts ──
+const MATCH_DATES: Record<number, string> = {
+  1:'2026-06-11T14:00:00-05:00', 2:'2026-06-11T21:00:00-05:00',
+  3:'2026-06-18T11:00:00-05:00', 4:'2026-06-18T20:00:00-05:00',
+  5:'2026-06-24T20:00:00-05:00', 6:'2026-06-24T20:00:00-05:00',
+  7:'2026-06-12T14:00:00-05:00', 8:'2026-06-13T14:00:00-05:00',
+  9:'2026-06-18T14:00:00-05:00', 10:'2026-06-18T17:00:00-05:00',
+  11:'2026-06-24T14:00:00-05:00', 12:'2026-06-24T14:00:00-05:00',
+  13:'2026-06-13T17:00:00-05:00', 14:'2026-06-13T20:00:00-05:00',
+  15:'2026-06-19T17:00:00-05:00', 16:'2026-06-19T19:30:00-05:00',
+  17:'2026-06-24T17:00:00-05:00', 18:'2026-06-24T17:00:00-05:00',
+  19:'2026-06-12T20:00:00-05:00', 20:'2026-06-13T23:00:00-05:00',
+  21:'2026-06-19T14:00:00-05:00', 22:'2026-06-19T22:00:00-05:00',
+  23:'2026-06-25T21:00:00-05:00', 24:'2026-06-25T21:00:00-05:00',
+  25:'2026-06-14T12:00:00-05:00', 26:'2026-06-14T18:00:00-05:00',
+  27:'2026-06-20T15:00:00-05:00', 28:'2026-06-20T19:00:00-05:00',
+  29:'2026-06-25T15:00:00-05:00', 30:'2026-06-25T15:00:00-05:00',
+  31:'2026-06-14T15:00:00-05:00', 32:'2026-06-14T21:00:00-05:00',
+  33:'2026-06-20T12:00:00-05:00', 34:'2026-06-20T23:00:00-05:00',
+  35:'2026-06-25T18:00:00-05:00', 36:'2026-06-25T18:00:00-05:00',
+  37:'2026-06-15T14:00:00-05:00', 38:'2026-06-15T20:00:00-05:00',
+  39:'2026-06-21T14:00:00-05:00', 40:'2026-06-21T20:00:00-05:00',
+  41:'2026-06-26T22:00:00-05:00', 42:'2026-06-26T22:00:00-05:00',
+  43:'2026-06-15T11:00:00-05:00', 44:'2026-06-15T17:00:00-05:00',
+  45:'2026-06-21T11:00:00-05:00', 46:'2026-06-21T17:00:00-05:00',
+  47:'2026-06-26T19:00:00-05:00', 48:'2026-06-26T19:00:00-05:00',
+  49:'2026-06-16T14:00:00-05:00', 50:'2026-06-16T17:00:00-05:00',
+  51:'2026-06-22T16:00:00-05:00', 52:'2026-06-22T19:00:00-05:00',
+  53:'2026-06-26T14:00:00-05:00', 54:'2026-06-26T14:00:00-05:00',
+  55:'2026-06-16T20:00:00-05:00', 56:'2026-06-16T23:00:00-05:00',
+  57:'2026-06-22T12:00:00-05:00', 58:'2026-06-22T22:00:00-05:00',
+  59:'2026-06-27T21:00:00-05:00', 60:'2026-06-27T21:00:00-05:00',
+  61:'2026-06-17T12:00:00-05:00', 62:'2026-06-17T21:00:00-05:00',
+  63:'2026-06-23T12:00:00-05:00', 64:'2026-06-23T21:00:00-05:00',
+  65:'2026-06-27T18:30:00-05:00', 66:'2026-06-27T18:30:00-05:00',
+  67:'2026-06-17T15:00:00-05:00', 68:'2026-06-17T18:00:00-05:00',
+  69:'2026-06-23T15:00:00-05:00', 70:'2026-06-23T18:00:00-05:00',
+  71:'2026-06-27T16:00:00-05:00', 72:'2026-06-27T16:00:00-05:00',
+  // ── Fase eliminatoria (73-104) — sync con src/data/knockoutMatches.ts ──
+  73:'2026-06-28T12:00:00-05:00', 74:'2026-06-29T16:30:00-05:00',
+  75:'2026-06-29T19:00:00-05:00', 76:'2026-06-29T12:00:00-05:00',
+  77:'2026-06-30T17:00:00-05:00', 78:'2026-06-30T12:00:00-05:00',
+  79:'2026-06-30T19:00:00-05:00', 80:'2026-07-01T12:00:00-05:00',
+  81:'2026-07-01T17:00:00-05:00', 82:'2026-07-01T13:00:00-05:00',
+  83:'2026-07-02T19:00:00-05:00', 84:'2026-07-02T12:00:00-05:00',
+  85:'2026-07-02T20:00:00-05:00', 86:'2026-07-03T18:00:00-05:00',
+  87:'2026-07-03T20:30:00-05:00', 88:'2026-07-03T13:00:00-05:00',
+  89:'2026-07-04T17:00:00-05:00', 90:'2026-07-04T12:00:00-05:00',
+  91:'2026-07-05T16:00:00-05:00', 92:'2026-07-05T18:00:00-05:00',
+  93:'2026-07-06T14:00:00-05:00', 94:'2026-07-06T17:00:00-05:00',
+  95:'2026-07-07T12:00:00-05:00', 96:'2026-07-07T13:00:00-05:00',
+  97:'2026-07-09T16:00:00-05:00', 98:'2026-07-10T12:00:00-05:00',
+  99:'2026-07-11T17:00:00-05:00', 100:'2026-07-11T20:00:00-05:00',
+  101:'2026-07-14T14:00:00-05:00', 102:'2026-07-15T15:00:00-05:00',
+  103:'2026-07-18T17:00:00-05:00', 104:'2026-07-19T15:00:00-05:00',
+};
+
+function isMatchLocked(matchId: number): boolean {
+  const dateStr = MATCH_DATES[matchId];
+  if (!dateStr) return true;
+  const diffMin = (new Date(dateStr).getTime() - Date.now()) / 60000;
+  return diffMin <= 25;
+}
+
 const app = new Hono();
 app.use("*", logger(console.log));
-app.use("/*", cors({ origin:"*", allowHeaders:["Content-Type","Authorization"], allowMethods:["GET","POST","PUT","DELETE","OPTIONS"], maxAge:600 }));
+const ALLOWED_ORIGINS = [
+  "https://pollamundial2026-coral.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
+app.use("/*", cors({
+  origin: (origin) => ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+  allowHeaders: ["Content-Type", "Authorization"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  maxAge: 600,
+}));
 
 const requireAuth = async (c: any, next: any) => {
   const h = c.req.header("Authorization");
@@ -192,8 +266,64 @@ app.post("/make-server-49810636/leagues/:leagueId/approve", requireAuth, async (
 app.get("/make-server-49810636/leagues/:leagueId/leaderboard", requireAuth, async (c) => {
   try {
     const leagueId = c.req.param("leagueId");
-    const { data: rows } = await getDb().from("scores").select("total, users(id, email, nombre)").eq("league_id", leagueId).order("total", { ascending: false });
-    return c.json({ leaderboard: (rows || []).map((r: any, i: number) => ({ userId:r.users.id, nombre:r.users.nombre, email:r.users.email, puntajeTotal:r.total, posicion:i+1 })) });
+    const db = getDb();
+    const [{ data: league }, { data: rows }, { data: exactos }] = await Promise.all([
+      db.from("leagues").select("admin_id").eq("id", leagueId).maybeSingle(),
+      db.from("scores").select("total, users(id, email, nombre)").eq("league_id", leagueId).order("total", { ascending: false }),
+      db.from("predictions").select("user_id").eq("league_id", leagueId).eq("puntos_obtenidos", 5),
+    ]);
+    const exactMap: Record<string, number> = {};
+    (exactos || []).forEach((e: any) => { exactMap[e.user_id] = (exactMap[e.user_id] || 0) + 1; });
+
+    // Último partido que afectó el ranking (finalizado o en juego, por momento de actualización)
+    const { data: lastMr } = await db.from("match_results")
+      .select("match_id")
+      .eq("league_id", leagueId)
+      .neq("estado", "pendiente")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Puntos que cada usuario obtuvo en ese último partido
+    const lastPtsMap: Record<string, number> = {};
+    const lastExactMap: Record<string, number> = {};
+    if (lastMr) {
+      const { data: lastPreds } = await db.from("predictions")
+        .select("user_id, puntos_obtenidos")
+        .eq("league_id", leagueId)
+        .eq("match_id", lastMr.match_id);
+      (lastPreds || []).forEach((p: any) => {
+        const pts = p.puntos_obtenidos ?? 0;
+        lastPtsMap[p.user_id] = pts;
+        if (pts === 5) lastExactMap[p.user_id] = 1;
+      });
+    }
+
+    // Filas (excluyendo admin, igual que la tabla mostrada) con total/exactos actuales y "antes" del último partido
+    const built = (rows || [])
+      .filter((r: any) => r.users.id !== league?.admin_id)
+      .map((r: any) => {
+        const uid = r.users.id;
+        const total = r.total;
+        const ex = exactMap[uid] || 0;
+        return {
+          uid, nombre: r.users.nombre, email: r.users.email, total, exactos: ex,
+          totalBefore: total - (lastPtsMap[uid] || 0),
+          exactosBefore: ex - (lastExactMap[uid] || 0),
+        };
+      });
+
+    // Ranking actual y ranking antes del último partido (mismo desempate: total → exactos)
+    const after = [...built].sort((a, b) => b.total - a.total || b.exactos - a.exactos);
+    const before = [...built].sort((a, b) => b.totalBefore - a.totalBefore || b.exactosBefore - a.exactosBefore);
+    const posBefore: Record<string, number> = {};
+    before.forEach((r, i) => { posBefore[r.uid] = i + 1; });
+
+    return c.json({ leaderboard: after.map((r, i) => ({
+      userId: r.uid, nombre: r.nombre, email: r.email,
+      puntajeTotal: r.total, posicion: i + 1, marcadoresExactos: r.exactos,
+      posicionAnterior: posBefore[r.uid],
+    })) });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
 
@@ -250,11 +380,11 @@ app.post("/make-server-49810636/matches/:matchId/result", requireAuth, async (c)
     } else {
       await db.from("match_results").insert({ match_id:matchId, league_id:leagueId, goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() });
     }
-    if (estado === "finalizado") {
+    if (estado === "finalizado" || estado === "en_juego") {
       await calculatePoints(matchId, leagueId, golesA, golesB);
-      
-      // Auto-advance knockout winners
-      if (matchId >= 73) {
+
+      // Auto-advance knockout winners — solo al finalizar, no en vivo
+      if (estado === "finalizado" && matchId >= 73) {
         const { data: mt } = await db.from("knockout_match_teams").select("team1, team2").eq("league_id", leagueId).eq("match_id", matchId).maybeSingle();
         if (mt) {
           let winner = ""; let loser = "";
@@ -299,15 +429,36 @@ app.post("/make-server-49810636/predictions", requireAuth, async (c) => {
   try {
     const user = c.get("user");
     const { matchId, leagueId, golesA, golesB } = await c.req.json();
+
+    // Capa 1 — Validación de inputs
+    const mid = Number(matchId);
+    if (!mid || mid < 1 || mid > 104) return c.json({ error: "Partido inválido" }, 400);
+    if (typeof golesA !== 'number' || typeof golesB !== 'number' || golesA < 0 || golesA > 20 || golesB < 0 || golesB > 20)
+      return c.json({ error: "Goles inválidos" }, 400);
+
+    // Capa 2 — Tiempo de bloqueo (25 min antes del partido)
+    if (isMatchLocked(mid)) return c.json({ error: "Pronóstico cerrado" }, 423);
+
     const db = getDb();
-    const { data: result } = await db.from("match_results").select("estado").eq("match_id", matchId).eq("league_id", leagueId).maybeSingle();
-    if (result?.estado === "finalizado") return c.json({ error: "Partido ya finalizado" }, 400);
+
+    // Capa 3 — Membresía activa en la liga
+    const { data: membership } = await db.from("league_members").select("status").eq("league_id", leagueId).eq("user_id", user.id).maybeSingle();
+    if (!membership || membership.status !== "active") return c.json({ error: "No eres miembro activo de esta liga" }, 403);
+
+    // Capa 4 — Estado del partido y predicción ya evaluada
+    const { data: result } = await db.from("match_results").select("estado").eq("match_id", mid).eq("league_id", leagueId).maybeSingle();
+    if (result && result.estado !== "pendiente") return c.json({ error: "Partido ya en curso o finalizado" }, 423);
+
     const { data: existing } = await db.from("predictions")
-      .select("id")
+      .select("id, puntos_obtenidos")
       .eq("league_id", leagueId)
       .eq("user_id", user.id)
-      .eq("match_id", matchId)
+      .eq("match_id", mid)
       .maybeSingle();
+
+    // Capa 4b — Predicción ya evaluada (puntos calculados = partido procesado)
+    if (existing && existing.puntos_obtenidos !== null && existing.puntos_obtenidos !== undefined)
+      return c.json({ error: "Pronóstico ya evaluado" }, 423);
 
     let pred, error;
     if (existing) {
@@ -320,7 +471,7 @@ app.post("/make-server-49810636/predictions", requireAuth, async (c) => {
       error = res.error;
     } else {
       const res = await db.from("predictions")
-        .insert({ league_id: leagueId, user_id: user.id, match_id: matchId, goles_a: golesA, goles_b: golesB, updated_at: new Date().toISOString() })
+        .insert({ league_id: leagueId, user_id: user.id, match_id: mid, goles_a: golesA, goles_b: golesB, updated_at: new Date().toISOString() })
         .select("id, match_id, goles_a, goles_b")
         .single();
       pred = res.data;
@@ -338,6 +489,159 @@ app.get("/make-server-49810636/predictions/:leagueId", requireAuth, async (c) =>
     const leagueId = c.req.param("leagueId");
     const { data: preds } = await getDb().from("predictions").select("id, match_id, goles_a, goles_b, puntos_obtenidos").eq("league_id", leagueId).eq("user_id", user.id);
     return c.json({ predictions: (preds || []).map((p: any) => ({ id:p.id, matchId:p.match_id, goles_a:p.goles_a, goles_b:p.goles_b, puntosObtenidos:p.puntos_obtenidos })) });
+  } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
+
+// GET /match-predictions/summary?matchId=&leagueId= — conteo anónimo por marcador
+app.get("/make-server-49810636/match-predictions/summary", async (c) => {
+  try {
+    const matchId = Number(c.req.query("matchId"));
+    const leagueId = c.req.query("leagueId");
+    if (!matchId || !leagueId) return c.json({ error: "Parámetros requeridos" }, 400);
+    const { data: preds } = await getDb().from("predictions").select("goles_a, goles_b").eq("match_id", matchId).eq("league_id", leagueId);
+    const counts: Record<string, { goles_a: number; goles_b: number; count: number }> = {};
+    for (const p of (preds || [])) {
+      const key = `${p.goles_a}-${p.goles_b}`;
+      if (!counts[key]) counts[key] = { goles_a: p.goles_a, goles_b: p.goles_b, count: 0 };
+      counts[key].count++;
+    }
+    const summary = Object.values(counts).sort((a, b) => b.count - a.count);
+    return c.json({ summary, total: (preds || []).length });
+  } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
+
+// GET /match-predictions/all?matchId=&leagueId= — lista completa con nombres (solo cuando bloqueado)
+app.get("/make-server-49810636/match-predictions/all", requireAuth, async (c) => {
+  try {
+    const matchId = Number(c.req.query("matchId"));
+    const leagueId = c.req.query("leagueId");
+    if (!matchId || !leagueId) return c.json({ error: "Parámetros requeridos" }, 400);
+    if (!isMatchLocked(matchId)) return c.json({ error: "Partido aún no bloqueado" }, 403);
+    const { data: preds } = await getDb().from("predictions")
+      .select("user_id, goles_a, goles_b, puntos_obtenidos, users(nombre)")
+      .eq("match_id", matchId).eq("league_id", leagueId);
+    const { data: scores } = await getDb().from("scores").select("user_id, total").eq("league_id", leagueId).order("total", { ascending: false });
+    const rankMap: Record<string, number> = {};
+    (scores || []).forEach((s: any, i: number) => { rankMap[s.user_id] = i + 1; });
+    const result = (preds || []).map((p: any) => ({
+      userId: p.user_id,
+      nombre: p.users?.nombre || "Usuario",
+      goles_a: p.goles_a,
+      goles_b: p.goles_b,
+      puntos_obtenidos: p.puntos_obtenidos,
+      ranking: rankMap[p.user_id] ?? 999,
+    })).sort((a: any, b: any) => a.ranking - b.ranking);
+    return c.json({ predictions: result });
+  } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
+
+// GET /match-predictions/ranking-snapshot?matchId=&leagueId=
+// Ranking acumulado al momento en que ESTE partido se finalizó (corte por updated_at),
+// con el delta de posición respecto a antes de este partido (quién subió/bajó por él).
+app.get("/make-server-49810636/match-predictions/ranking-snapshot", requireAuth, async (c) => {
+  try {
+    const matchId = Number(c.req.query("matchId"));
+    const leagueId = c.req.query("leagueId");
+    if (!matchId || !leagueId) return c.json({ error: "Parámetros requeridos" }, 400);
+    const db = getDb();
+
+    // Liga (para excluir al admin, igual que la tabla general)
+    const { data: league } = await db.from("leagues").select("admin_id").eq("id", leagueId).maybeSingle();
+    if (!league) return c.json({ error: "Liga no encontrada" }, 404);
+
+    // Resultado del partido objetivo → define el corte temporal
+    const { data: target } = await db.from("match_results")
+      .select("updated_at, estado")
+      .eq("match_id", matchId).eq("league_id", leagueId).maybeSingle();
+    if (!target) return c.json({ snapshot: [], hasData: false });
+
+    const cutoff = target.updated_at;
+
+    // Partidos finalizados hasta el corte (por momento de finalización)
+    const { data: finals } = await db.from("match_results")
+      .select("match_id")
+      .eq("league_id", leagueId)
+      .eq("estado", "finalizado")
+      .lte("updated_at", cutoff);
+    const afterIds = new Set<number>((finals || []).map((r: any) => r.match_id));
+    afterIds.add(matchId); // incluir el objetivo aunque esté en_juego (puntos provisionales)
+    const afterIdArr = Array.from(afterIds);
+
+    // Predicciones de todos en esos partidos + miembros (para poblar incluso a los de 0 pts)
+    const [{ data: preds }, { data: members }] = await Promise.all([
+      db.from("predictions").select("user_id, match_id, puntos_obtenidos").eq("league_id", leagueId).in("match_id", afterIdArr),
+      db.from("scores").select("user_id, users(nombre)").eq("league_id", leagueId),
+    ]);
+
+    type Agg = { nombre: string; totalAfter: number; exactosAfter: number; ptsMatch: number; exactMatch: number };
+    const agg: Record<string, Agg> = {};
+    for (const m of (members || [])) {
+      if ((m as any).user_id === league.admin_id) continue;
+      agg[(m as any).user_id] = { nombre: (m as any).users?.nombre || "Usuario", totalAfter: 0, exactosAfter: 0, ptsMatch: 0, exactMatch: 0 };
+    }
+    for (const p of (preds || [])) {
+      const a = agg[(p as any).user_id];
+      if (!a) continue; // admin u otros fuera de scores
+      const pts = (p as any).puntos_obtenidos ?? 0;
+      a.totalAfter += pts;
+      if (pts === 5) a.exactosAfter += 1;
+      if ((p as any).match_id === matchId) { a.ptsMatch = pts; if (pts === 5) a.exactMatch = 1; }
+    }
+
+    const rows = Object.entries(agg).map(([userId, a]) => ({
+      userId, nombre: a.nombre,
+      total: a.totalAfter, exactos: a.exactosAfter,
+      totalBefore: a.totalAfter - a.ptsMatch,
+      exactosBefore: a.exactosAfter - a.exactMatch,
+      puntosEstePartido: a.ptsMatch,
+    }));
+
+    // Mismo desempate que el ranking general: total, luego marcadores exactos
+    const after = [...rows].sort((x, y) => y.total - x.total || y.exactos - x.exactos);
+    const posAfter: Record<string, number> = {};
+    after.forEach((r, i) => { posAfter[r.userId] = i + 1; });
+
+    const before = [...rows].sort((x, y) => y.totalBefore - x.totalBefore || y.exactosBefore - x.exactosBefore);
+    const posBefore: Record<string, number> = {};
+    before.forEach((r, i) => { posBefore[r.userId] = i + 1; });
+
+    const snapshot = after.map(r => ({
+      userId: r.userId,
+      nombre: r.nombre,
+      total: r.total,
+      posicion: posAfter[r.userId],
+      posicionAnterior: posBefore[r.userId],
+      delta: posBefore[r.userId] - posAfter[r.userId],
+      puntosEstePartido: r.puntosEstePartido,
+    }));
+
+    return c.json({ snapshot, hasData: true, estado: target.estado });
+  } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
+
+// GET /player-predictions/locked?userId=&leagueId= — predicciones de un jugador (partidos bloqueados/finalizados)
+app.get("/make-server-49810636/player-predictions/locked", requireAuth, async (c) => {
+  try {
+    const targetUserId = c.req.query("userId");
+    const leagueId = c.req.query("leagueId");
+    if (!targetUserId || !leagueId) return c.json({ error: "Parámetros requeridos" }, 400);
+    const { data: preds } = await getDb().from("predictions")
+      .select("match_id, goles_a, goles_b, puntos_obtenidos")
+      .eq("league_id", leagueId).eq("user_id", targetUserId);
+    const { data: results } = await getDb().from("match_results").select("match_id, estado, goles_a, goles_b").eq("league_id", leagueId);
+    const resultMap: Record<number, any> = {};
+    (results || []).forEach((r: any) => { resultMap[r.match_id] = r; });
+    const lockedPreds = (preds || []).filter((p: any) => {
+      const hasResult = resultMap[p.match_id];
+      return isMatchLocked(p.match_id) || hasResult;
+    }).map((p: any) => ({
+      matchId: p.match_id,
+      goles_a: p.goles_a,
+      goles_b: p.goles_b,
+      puntos_obtenidos: p.puntos_obtenidos,
+      resultado: resultMap[p.match_id] ? { goles_a: resultMap[p.match_id].goles_a, goles_b: resultMap[p.match_id].goles_b, estado: resultMap[p.match_id].estado } : null,
+    }));
+    return c.json({ predictions: lockedPreds });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
 
@@ -650,71 +954,6 @@ app.get("/make-server-49810636/bracket/group-standings-final", async (c) => {
     const standings = Object.entries(grouped).map(([grupo, equipos]) => ({ grupo, equipos }));
     return c.json({ standings });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
-});
-
-app.get("/make-server-49810636/bracket/debug-knockout", async (c) => {
-  const db = getDb();
-  const res = await db.from("knockout_match_teams").insert({
-    league_id: "be1a0128-f18b-4385-b624-6efa46ab03eb",
-    match_id: 73,
-    team1: "A",
-    team2: "B"
-  });
-  return c.json({ data: res.data, error: res.error });
-});
-
-app.get("/make-server-49810636/bracket/fix-knockout", async (c) => {
-  try {
-    const db = getDb();
-    const { data: rows } = await db.from("group_standings_final").select("*");
-    if (!rows || rows.length === 0) return c.json({ error: "No rows", rows });
-
-    const byLeague: Record<string, Record<string, any[]>> = {};
-    for (const r of rows) {
-      if (!byLeague[r.league_id]) byLeague[r.league_id] = {};
-      if (!byLeague[r.league_id][r.grupo]) byLeague[r.league_id][r.grupo] = [];
-      byLeague[r.league_id][r.grupo].push(r);
-    }
-
-    const updates = [];
-    for (const [leagueId, grouped] of Object.entries(byLeague)) {
-      for (const [grupo, equipos] of Object.entries(grouped)) {
-        equipos.sort((a,b) => a.posicion - b.posicion);
-        const getPos = (pos: number) => equipos[pos - 1]?.equipo ?? `${pos}º${grupo}`;
-        const t1 = getPos(1);
-        const t2 = getPos(2);
-
-        const matchUpdates = [];
-        if (grupo === 'A') { matchUpdates.push({ m:73, s:'team1', v:t2 }, { m:79, s:'team1', v:t1 }); }
-        if (grupo === 'B') { matchUpdates.push({ m:73, s:'team2', v:t2 }, { m:85, s:'team1', v:t1 }); }
-        if (grupo === 'C') { matchUpdates.push({ m:75, s:'team2', v:t2 }, { m:76, s:'team1', v:t1 }); }
-        if (grupo === 'D') { matchUpdates.push({ m:81, s:'team1', v:t1 }, { m:88, s:'team1', v:t2 }); }
-        if (grupo === 'E') { matchUpdates.push({ m:74, s:'team1', v:t1 }, { m:78, s:'team1', v:t2 }); }
-        if (grupo === 'F') { matchUpdates.push({ m:75, s:'team1', v:t1 }, { m:76, s:'team2', v:t2 }); }
-        if (grupo === 'G') { matchUpdates.push({ m:82, s:'team1', v:t1 }, { m:88, s:'team2', v:t2 }); }
-        if (grupo === 'H') { matchUpdates.push({ m:84, s:'team1', v:t1 }, { m:86, s:'team2', v:t2 }); }
-        if (grupo === 'I') { matchUpdates.push({ m:77, s:'team1', v:t1 }, { m:78, s:'team2', v:t2 }); }
-        if (grupo === 'J') { matchUpdates.push({ m:84, s:'team2', v:t2 }, { m:86, s:'team1', v:t1 }); }
-        if (grupo === 'K') { matchUpdates.push({ m:83, s:'team1', v:t2 }, { m:87, s:'team1', v:t1 }); }
-        if (grupo === 'L') { matchUpdates.push({ m:80, s:'team1', v:t1 }, { m:83, s:'team2', v:t2 }); }
-
-        for (const update of matchUpdates) {
-          const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", update.m).maybeSingle();
-          if (ext) {
-            await db.from("knockout_match_teams").update({ [update.s]: update.v }).eq("league_id", leagueId).eq("match_id", update.m);
-          } else {
-            await db.from("knockout_match_teams").insert({
-              league_id: leagueId, match_id: update.m, 
-              team1: update.s === 'team1' ? update.v : "",
-              team2: update.s === 'team2' ? update.v : ""
-            });
-          }
-        }
-      }
-      updates.push({ leagueId, grupos: Object.keys(grouped) });
-    }
-    return c.json({ fixed: true, updates });
-  } catch(err) { return c.json({ error: String(err) }, 500); }
 });
 
 // ── Cálculo de puntos ─────────────────────────────────────────────────────────

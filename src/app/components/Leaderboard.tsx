@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TrendingUp, TrendingDown, Trophy, ChevronRight, Share2, Check, Users, FileText } from 'lucide-react';
 import { TermsModal } from './TermsModal';
+import { PlayerPredictionsModal } from './PlayerPredictionsModal';
 
 interface LeaderboardPlayer {
   id: string;
@@ -22,11 +23,14 @@ interface LeaderboardProps {
   players: LeaderboardPlayer[];
   currentUserId?: string;
   currentLeague?: League;
+  accessToken?: string;
 }
 
-export function Leaderboard({ players, currentUserId, currentLeague }: LeaderboardProps) {
+export function Leaderboard({ players, currentUserId, currentLeague, accessToken }: LeaderboardProps) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardPlayer | null>(null);
+  const [seenRanking, setSeenRanking] = useState(() => localStorage.getItem('polla_seen_ranking') === '1');
   const sortedPlayers = [...players].sort((a, b) => {
     if (b.puntaje_total !== a.puntaje_total) return b.puntaje_total - a.puntaje_total;
     return (b.marcadores_exactos ?? 0) - (a.marcadores_exactos ?? 0);
@@ -59,6 +63,16 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
     <div className="relative w-full max-w-4xl mx-auto py-8 sm:py-12 px-4 sm:px-6">
 
       {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+
+      {selectedPlayer && currentLeague && accessToken && (
+        <PlayerPredictionsModal
+          player={selectedPlayer}
+          leagueId={currentLeague.id}
+          accessToken={accessToken}
+          currentUserId={currentUserId}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
 
       {/* Main content starts directly */}
 
@@ -188,13 +202,17 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
             return (
               <div
                 key={player.id}
-                className={`group relative flex items-center p-4 sm:p-5 transition-all duration-500 ease-out rounded-3xl ${
+                onClick={() => { setSelectedPlayer(player); if (!seenRanking) { localStorage.setItem('polla_seen_ranking', '1'); setSeenRanking(true); } }}
+                className={`group relative flex items-center p-4 sm:p-5 transition-all duration-500 ease-out rounded-3xl cursor-pointer ${
                   isCurrentUser
                     ? 'bg-card/80 backdrop-blur-2xl border-2 border-primary/20 shadow-[0_8px_30px_rgba(0,0,0,0.08)] scale-[1.01] z-10'
                     : 'bg-card/40 backdrop-blur-xl border border-border/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:bg-card/70 hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:scale-[1.005]'
                 }`}
               >
-                
+                {!seenRanking && (
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse pointer-events-none" />
+                )}
+
                 {/* Indicador de Posición */}
                 <div className={`w-12 sm:w-16 flex-shrink-0 flex justify-center items-center font-score text-3xl sm:text-4xl font-black tracking-tighter ${rankColor}`}>
                   {position}
@@ -220,20 +238,6 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
                     </div>
                   )}
 
-                  {/* Badge de tendencia (Subió/Bajó) - Posicionado como un micro-detalle */}
-                  {positionChange !== null && positionChange !== 0 && (
-                    <div
-                      className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-sm border-2 border-white backdrop-blur-md ${
-                        positionChange > 0 ? 'bg-emerald-500' : 'bg-rose-500'
-                      }`}
-                    >
-                      {positionChange > 0 ? (
-                        <TrendingUp className="w-3 h-3 text-white" strokeWidth={3} />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 text-white" strokeWidth={3} />
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Información Principal */}
@@ -249,22 +253,31 @@ export function Leaderboard({ players, currentUserId, currentLeague }: Leaderboa
                     )}
                   </div>
                   
-                  {/* Exactos + tendencia */}
+                  {/* Exactos (criterio de desempate) */}
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {(player.marcadores_exactos ?? 0) > 0 && (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                        ⚽ {player.marcadores_exactos} exacto{(player.marcadores_exactos ?? 0) !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {positionChange !== null && positionChange !== 0 && (
-                      <p className="text-[11px] font-semibold text-muted-foreground">
-                        {positionChange > 0
-                          ? `↑ Subió ${positionChange} lugar${positionChange > 1 ? 'es' : ''}`
-                          : `↓ Bajó ${Math.abs(positionChange)} lugar${Math.abs(positionChange) > 1 ? 'es' : ''}`}
-                      </p>
-                    )}
+                    <span className={`text-[11px] font-medium ${
+                      (player.marcadores_exactos ?? 0) > 0
+                        ? 'text-amber-500/50'
+                        : 'text-muted-foreground/30'
+                    }`}>
+                      Marcadores exactos: {player.marcadores_exactos ?? 0}
+                    </span>
                   </div>
                 </div>
+
+                {/* Movimiento respecto al último partido */}
+                {positionChange !== null && positionChange !== 0 && (
+                  <div className={`flex-shrink-0 flex items-center gap-0.5 sm:gap-1 mr-2 sm:mr-5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl ${
+                    positionChange > 0
+                      ? 'bg-emerald-500/10 text-emerald-500'
+                      : 'bg-rose-500/10 text-rose-500'
+                  }`}>
+                    {positionChange > 0
+                      ? <TrendingUp className="w-3.5 h-3.5 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                      : <TrendingDown className="w-3.5 h-3.5 sm:w-5 sm:h-5" strokeWidth={2.5} />}
+                    <span className="font-bold text-xs sm:text-base">{Math.abs(positionChange)}</span>
+                  </div>
+                )}
 
                 {/* Puntaje */}
                 <div className="flex-shrink-0 text-right ml-4 flex flex-col justify-center items-end">

@@ -1,12 +1,19 @@
 import { CountryFlag } from './CountryFlag';
-import { TEAM_RECENT_MATCHES, TeamMatch } from '../../data/groupStandingsData';
+
+interface RecentMatch {
+  equipo_a: string;
+  equipo_b: string;
+  goles_a: number;
+  goles_b: number;
+  fecha: string;
+}
 
 interface TeamHoverCardProps {
   team: string;
+  recentMatches?: RecentMatch[];
 }
 
-export function TeamHoverCard({ team }: TeamHoverCardProps) {
-  const recentMatches = TEAM_RECENT_MATCHES[team] || [];
+export function TeamHoverCard({ team, recentMatches = [] }: TeamHoverCardProps) {
 
   if (recentMatches.length === 0) {
     return (
@@ -85,12 +92,6 @@ export function TeamHoverCard({ team }: TeamHoverCardProps) {
         })}
       </div>
 
-      {/* Footer */}
-      <div className="bg-muted px-3 py-2 border-t border-border">
-        <p className="text-xs text-center text-muted-foreground font-medium">
-          Click para ver tabla completa del grupo
-        </p>
-      </div>
     </div>
   );
 }

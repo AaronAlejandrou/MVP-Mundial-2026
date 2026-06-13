@@ -239,15 +239,15 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches 
     setGolesB(result?.golesB ?? 0);
   };
 
-  const saveResult = (matchId: number) => {
-    onUpdateResult(matchId, golesA, golesB, 'finalizado');
+  const saveResult = (matchId: number, estado: 'en_juego' | 'finalizado') => {
+    onUpdateResult(matchId, golesA, golesB, estado);
     setEditingMatch(null);
   };
 
   const getEstadoBadge = (result: any) => {
     if (!result) return { label: 'Pendiente', class: 'bg-muted text-muted-foreground' };
-    if (result.estado === 'finalizado') return { label: 'Finalizado', class: 'bg-secondary/20 text-secondary-foreground' };
-    if (result.estado === 'en_curso') return { label: 'En juego', class: 'bg-accent/20 text-accent-foreground' };
+    if (result.estado === 'finalizado') return { label: 'Finalizado', class: 'bg-secondary/20 text-secondary' };
+    if (result.estado === 'en_juego') return { label: 'En vivo', class: 'bg-rose-500/20 text-rose-400' };
     return { label: 'Pendiente', class: 'bg-muted text-muted-foreground' };
   };
 
@@ -345,7 +345,9 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches 
                   <div
                     key={match.id}
                     className={`bg-card rounded-xl border-2 p-3 sm:p-4 transition-all shadow-sm ${
-                      result?.estado === 'finalizado' ? 'border-secondary/30 bg-secondary/5' : 'border-border'
+                      result?.estado === 'finalizado' ? 'border-secondary/30 bg-secondary/5' :
+                      result?.estado === 'en_juego' ? 'border-rose-500/30 bg-rose-500/5' :
+                      'border-border'
                     }`}
                   >
                     {/* Detalles superiores */}
@@ -403,19 +405,42 @@ function MatchResultsTab({ matchResults, onUpdateResult, isLoading, baseMatches 
                       {isEditing ? (
                         <>
                           <button
-                            onClick={() => saveResult(match.id)}
+                            onClick={() => saveResult(match.id, 'en_juego')}
                             disabled={isLoading}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-bold text-sm hover:bg-secondary/90 transition-colors disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-lg font-bold text-xs hover:bg-rose-500/25 transition-colors disabled:opacity-50"
                           >
-                            <Check className="w-4 h-4" />
-                            Guardar
+                            Actualizar en vivo
+                          </button>
+                          <button
+                            onClick={() => saveResult(match.id, 'finalizado')}
+                            disabled={isLoading}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-secondary text-secondary-foreground rounded-lg font-bold text-xs hover:bg-secondary/90 transition-colors disabled:opacity-50"
+                          >
+                            Confirmar resultado final
                           </button>
                           <button
                             onClick={() => setEditingMatch(null)}
                             disabled={isLoading}
-                            className="px-4 py-2 bg-muted text-foreground rounded-lg font-bold text-sm hover:bg-muted/80 transition-colors"
+                            className="px-3 py-2 bg-muted text-muted-foreground rounded-lg font-bold text-xs hover:bg-muted/80 transition-colors"
                           >
-                            <X className="w-4 h-4" />
+                            Cancelar
+                          </button>
+                        </>
+                      ) : result?.estado === 'en_juego' ? (
+                        <>
+                          <button
+                            onClick={() => startEdit(match.id)}
+                            disabled={isLoading}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-lg font-bold text-xs hover:bg-rose-500/25 transition-colors disabled:opacity-50"
+                          >
+                            Editar marcador
+                          </button>
+                          <button
+                            onClick={() => onUpdateResult(match.id, result.golesA, result.golesB, 'finalizado')}
+                            disabled={isLoading}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-secondary text-secondary-foreground rounded-lg font-bold text-xs hover:bg-secondary/90 transition-colors disabled:opacity-50"
+                          >
+                            Confirmar resultado final
                           </button>
                         </>
                       ) : (
