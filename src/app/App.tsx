@@ -191,6 +191,27 @@ export default function App() {
         setMatchResults(data.results || {});
       }
     } catch { /* silent */ }
+    // Predicciones: merge conservando la referencia de las que no cambian, para refrescar
+    // los puntos provisionales SIN pisar lo que el usuario edite en partidos aún abiertos.
+    try {
+      const pres = await apiFetch(`/predictions/${currentLeague.id}`, { token: accessToken });
+      if (pres.ok) {
+        const pdata = await pres.json();
+        setPredictions(prev => {
+          const next = { ...prev };
+          let changed = false;
+          (pdata.predictions || []).forEach((p: any) => {
+            const incoming = { goles_a: p.goles_a, goles_b: p.goles_b, puntos_obtenidos: p.puntosObtenidos ?? undefined };
+            const existing = prev[p.matchId];
+            if (!existing || existing.goles_a !== incoming.goles_a || existing.goles_b !== incoming.goles_b || existing.puntos_obtenidos !== incoming.puntos_obtenidos) {
+              next[p.matchId] = incoming; // referencia nueva solo si realmente cambió
+              changed = true;
+            }
+          });
+          return changed ? next : prev; // si nada cambió, mismo objeto → sin re-render
+        });
+      }
+    } catch { /* silent */ }
     await loadLeaderboard();
   }, [currentLeague?.id, accessToken, loadLeaderboard]);
 
