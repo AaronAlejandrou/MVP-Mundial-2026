@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚽ Live Test — Mundial 2026</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; padding: 32px 16px; }
+    h1 { text-align: center; font-size: 1.1rem; color: #94a3b8; margin-bottom: 6px; letter-spacing: .05em; text-transform: uppercase; }
+    #status-bar { text-align: center; font-size: .8rem; color: #64748b; margin-bottom: 32px; }
+    #status-bar .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; margin-right: 6px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    #matches-container { display: flex; flex-direction: column; gap: 20px; max-width: 640px; margin: 0 auto; }
+    .match-card { background: #1e293b; border-radius: 16px; border: 1px solid #334155; padding: 24px; }
+    .match-card.live     { border-color: #22c55e; box-shadow: 0 0 24px rgba(34,197,94,.15); }
+    .match-card.halftime { border-color: #f59e0b; box-shadow: 0 0 24px rgba(245,158,11,.15); }
+    .match-card.finished { border-color: #475569; opacity: .8; }
+    .phase-badge { display: inline-flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 20px; }
+    .phase-badge.live     { background: rgba(34,197,94,.15);  color: #22c55e; }
+    .phase-badge.halftime { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .phase-badge.finished { background: rgba(100,116,139,.15);color: #94a3b8; }
+    .phase-badge.pending  { background: rgba(99,102,241,.15); color: #818cf8; }
+    .teams-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .team { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .team-name { font-size: .9rem; font-weight: 600; color: #cbd5e1; text-align: center; }
+    .score-block { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .score { font-size: 3rem; font-weight: 900; font-variant-numeric: tabular-nums; color: #f1f5f9; min-width: 48px; text-align: center; }
+    .score-divider { font-size: 2rem; color: #475569; font-weight: 300; }
+    .minute-label { text-align: center; margin-top: 16px; font-size: .85rem; color: #94a3b8; }
+    .minute-label strong { color: #22c55e; font-size: 1.1rem; }
+    .minute-label.ht strong { color: #f59e0b; }
+    .source-note { text-align: center; margin-top: 6px; font-size: .68rem; color: #334155; }
+    .debug-toggle { margin-top: 14px; text-align: right; }
+    .debug-toggle button { background: none; border: 1px solid #334155; color: #64748b; padding: 4px 10px; border-radius: 6px; font-size: .7rem; cursor: pointer; }
+    .debug-toggle button:hover { border-color: #64748b; color: #94a3b8; }
+    .debug-panel { margin-top: 8px; background: #0f172a; border-radius: 8px; padding: 12px; font-size: .68rem; font-family: monospace; color: #64748b; overflow-x: auto; display: none; white-space: pre; }
+    .debug-panel.visible { display: block; }
+    .empty-state { text-align: center; padding: 60px 24px; color: #475569; }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+    .countdown { text-align: center; font-size: .75rem; color: #475569; margin-top: 24px; }
+    .step-label { text-align: center; font-size: .7rem; color: #334155; margin-bottom: 8px; min-height: 16px; }
+    .error-state { text-align: center; padding: 40px 24px; color: #ef4444; font-size: .9rem; }
+  </style>
+</head>
+<body>
+
+<h1>⚽ Mundial 2026 — Partidos en Vivo</h1>
+<div id="status-bar">Cargando...</div>
+<div class="step-label" id="step-label"></div>
+<div id="matches-container"></div>
+<div class="countdown" id="countdown"></div>
+
+<script>
+  const API = 'https://www.thesportsdb.com/api/v1/json/123';
+  const LID = '4429';
+
+  const STATUS_MAP = {
+    '1H':  { label: 'Primer tiempo',  cls: 'live',     icon: '🟢' },
+    'HT':  { label: 'Medio tiempo',   cls: 'halftime', icon: '🟡' },
+    '2H':  { label: 'Segundo tiempo', cls: 'live',     icon: '🟢' },
+    'ET':  { label: 'Finalizado',     cls: 'finished', icon: '✅' },
+    'BT':  { label: 'Finalizado',     cls: 'finished', icon: '✅' },
+    'P':   { label: 'Finalizado',     cls: 'finished', icon: '✅' },
+    'PEN': { label: 'Finalizado',     cls: 'finished', icon: '✅' },
+    'AET': { label: 'Finalizado',     cls: 'finished', icon: '✅' },
+    'FT':  { label: 'Finalizado',     cls: 'finished', icon: '✅' },
+    'NS':  { label: 'Por jugar',      cls: 'pending',  icon: '⏳' },
+  };
+
+  // ── Reloj local por partido ─────────────────────────────────────────────────
+  // timers[idEvent] = {
+  //   kickoffMs,        // strTimestamp en ms
+  //   status,           // último strStatus conocido
+  //   prevStatus,       // para detectar HT→2H
+  //   apiMinute,        // strProgress de la última llamada (null si vacío)
+  //   apiReceivedAt,    // Date.now() cuando recibimos ese apiMinute
+  //   secondHalfStartMs // estimado de cuándo arrancó el 2T
+  // }
+  const timers = {};
+
+  function updateTimer(event) {
+    const id  = event.idEvent;
+    const now = Date.now();
+    const kickoffMs = new Date(event.strTimestamp + 'Z').getTime(); // forzar UTC (sin Z JS parsea como hora local)
+    const apiMinute = event.strProgress ? parseInt(event.strProgress, 10) : null;
+    const status    = event.strStatus || 'NS';
+    const prev      = timers[id];
+
+    let secondHalfStartMs = prev?.secondHalfStartMs ?? null;
+
+    // Detectar transición HT → 2H: el 2T acaba de arrancar
+    if (status === '2H' && prev?.status === 'HT') {
+      secondHalfStartMs = now;
+    }
+    // Llegamos directamente en 2H sin haber visto HT (ej: abrimos la página tarde)
+    if (status === '2H' && !secondHalfStartMs) {
+      if (apiMinute !== null) {
+        // Retroceder desde el minuto API: si la API dice min 48, arrancó hace 3 min desde 45
+        secondHalfStartMs = now - (apiMinute - 45) * 60000;
+      } else {
+        // Sin dato de minuto: asumir que el 2T acaba de arrancar ahora
+        // (muestra 45' y sube — mejor que dar negativo)
+        secondHalfStartMs = now;
+      }
+    }
+    // Guard: si el estimado quedó en el futuro (cálculo incorrecto), resetear a ahora
+    if (status === '2H' && secondHalfStartMs > now) {
+      secondHalfStartMs = now;
+    }
+
+    timers[id] = {
+      kickoffMs,
+      status,
+      prevStatus: prev?.status ?? null,
+      apiMinute,
+      apiReceivedAt: apiMinute !== null ? now : (prev?.apiReceivedAt ?? now),
+      secondHalfStartMs,
+    };
+  }
+
+  function calcMinute(idEvent) {
+    const t = timers[idEvent];
+    if (!t) return null;
+    const now = Date.now();
+    const { status, kickoffMs, apiMinute, apiReceivedAt, secondHalfStartMs } = t;
+
+    if (status === 'HT' || !['1H','2H'].includes(status)) return null;
+
+    const secsSinceApi = (now - apiReceivedAt) / 1000;
+
+    if (status === '1H') {
+      if (apiMinute !== null) {
+        // Extrapolar suavemente desde el último minuto que nos dio la API
+        return Math.min(Math.floor(apiMinute + secsSinceApi / 60), 45);
+      }
+      // Sin dato API: calcular desde el kickoff
+      return Math.min(Math.floor((now - kickoffMs) / 60000), 45);
+    }
+
+    if (status === '2H') {
+      if (apiMinute !== null) {
+        return Math.min(Math.floor(apiMinute + secsSinceApi / 60), 90);
+      }
+      if (secondHalfStartMs) {
+        return 45 + Math.min(Math.floor((now - secondHalfStartMs) / 60000), 45);
+      }
+      return 46;
+    }
+
+    return null;
+  }
+
+  // ── API calls ───────────────────────────────────────────────────────────────
+  function utcDate(offsetDays = 0) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return d.toISOString().slice(0, 10);
+  }
+
+  async function discoverEvents() {
+    const days = [utcDate(0), utcDate(1)];
+    const all = [];
+    for (const d of days) {
+      const res  = await fetch(`${API}/eventsday.php?d=${d}&l=${LID}`);
+      const json = await res.json();
+      const evts = (json.events || json.event || []).filter(e =>
+        e.idLeague === LID &&
+        (e.strSeason === '2026' || (e.strFilename||'').startsWith('FIFA World Cup 2026'))
+      );
+      all.push(...evts);
+    }
+    return all.filter(e => e.strStatus !== 'NS');
+  }
+
+  async function lookupEvent(idEvent) {
+    const res  = await fetch(`${API}/lookupevent.php?id=${idEvent}`);
+    const json = await res.json();
+    return (json.events || json.event || [])[0] || null;
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  let latestEvents = [];
+
+  function renderAll() {
+    if (!latestEvents.length) return;
+    document.getElementById('matches-container').innerHTML =
+      latestEvents.map(renderMatch).join('');
+  }
+
+  function renderMatch(event) {
+    const status = event.strStatus || 'NS';
+    const info   = STATUS_MAP[status] || { label: status, cls: 'pending', icon: '❓' };
+    const homeScore = event.intHomeScore ?? '?';
+    const awayScore = event.intAwayScore ?? '?';
+
+    const minute = calcMinute(event.idEvent);
+
+    let phaseExtra = '';
+    let minuteHTML = '';
+
+    if (status === 'HT') {
+      minuteHTML = `<div class="minute-label ht">⏸ <strong>Descanso</strong></div>`;
+    } else if (minute !== null) {
+      phaseExtra  = ` · ${minute}'`;
+      minuteHTML  = `<div class="minute-label">⏱ <strong>${minute}'</strong></div>`;
+    } else if (['FT','AET','PEN','ET','BT','P'].includes(status)) {
+      minuteHTML = `<div class="minute-label">Partido terminado</div>`;
+    }
+
+    return `
+      <div class="match-card ${info.cls}">
+        <div class="phase-badge ${info.cls}">
+          ${info.icon} ${info.label}${phaseExtra}
+        </div>
+        <div class="teams-row">
+          <div class="team"><div class="team-name">${event.strHomeTeam}</div></div>
+          <div class="score-block">
+            <div class="score">${homeScore}</div>
+            <div class="score-divider">-</div>
+            <div class="score">${awayScore}</div>
+          </div>
+          <div class="team"><div class="team-name">${event.strAwayTeam}</div></div>
+        </div>
+        ${minuteHTML}
+        <div class="source-note">lookupevent · id ${event.idEvent} · strProgress: ${event.strProgress||'—'} · strStatus: ${status}</div>
+        <div class="debug-toggle">
+          <button onclick="this.nextElementSibling.classList.toggle('visible')">ver raw API</button>
+          <div class="debug-panel">${JSON.stringify(event, null, 2)}</div>
+        </div>
+      </div>`;
+  }
+
+  // ── Loops ───────────────────────────────────────────────────────────────────
+  let knownIds    = [];
+  let lastDiscover = 0;
+  let cdVal       = 5;
+  let cdInterval  = null;
+
+  function startCountdown() {
+    cdVal = 5;
+    if (cdInterval) clearInterval(cdInterval);
+    cdInterval = setInterval(() => {
+      cdVal--;
+      document.getElementById('countdown').textContent = `Actualizando en ${cdVal}s…`;
+      if (cdVal <= 0) clearInterval(cdInterval);
+    }, 1000);
+  }
+
+  // Tick de 1 segundo → re-renderiza solo los minutos sin llamar la API
+  setInterval(() => { if (latestEvents.length) renderAll(); }, 1000);
+
+  async function refresh() {
+    const now  = Date.now();
+    const step = document.getElementById('step-label');
+
+    if (knownIds.length === 0 || now - lastDiscover > 30000) {
+      step.textContent = 'Paso 1: eventsday → descubriendo partidos…';
+      try {
+        const disc = await discoverEvents();
+        knownIds    = disc.map(e => e.idEvent);
+        lastDiscover = now;
+      } catch (err) {
+        step.textContent = `Error descubrimiento: ${err.message}`;
+        startCountdown(); return;
+      }
+    }
+
+    step.textContent = knownIds.length
+      ? `Paso 2: lookupevent → ${knownIds.length} partido(s)…`
+      : '';
+
+    document.getElementById('status-bar').innerHTML =
+      `<span class="dot"></span> Conectado a TheSportsDB · idLeague=${LID}`;
+
+    if (!knownIds.length) {
+      latestEvents = [];
+      document.getElementById('matches-container').innerHTML = `
+        <div class="empty-state">
+          <div class="icon">📭</div>
+          <p>No hay partidos activos ahora mismo.</p>
+        </div>`;
+      step.textContent = '';
+      startCountdown(); return;
+    }
+
+    try {
+      const fresh = (await Promise.all(knownIds.map(lookupEvent))).filter(Boolean);
+      fresh.forEach(updateTimer);   // actualizar reloj local con dato fresco
+      latestEvents = fresh;
+      renderAll();
+      step.textContent = '';
+    } catch (err) {
+      document.getElementById('matches-container').innerHTML =
+        `<div class="error-state">❌ ${err.message}</div>`;
+    }
+
+    startCountdown();
+  }
+
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>

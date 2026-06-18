@@ -14,6 +14,8 @@ interface Match {
   goles_a?: number | null;
   goles_b?: number | null;
   estado?: 'pendiente' | 'en_curso' | 'finalizado';
+  api_status?: string | null;
+  minuto?: string | null;
 }
 
 interface Prediction {

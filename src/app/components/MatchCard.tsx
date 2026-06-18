@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Lock, Check, Clock, MapPin, Trophy, Plus, Minus, Table2, ChevronRight, BarChart2, Users } from 'lucide-react';
 import { format } from 'date-fns';
@@ -17,6 +17,18 @@ interface Match {
   goles_a?: number | null;
   goles_b?: number | null;
   estado?: 'pendiente' | 'en_curso' | 'finalizado';
+  api_status?: string | null;
+  minuto?: string | null;
+}
+
+function getPhaseLabel(apiStatus: string | null | undefined, minuto: string | null | undefined, isLive: boolean, estado: string | undefined): React.ReactNode {
+  if (estado === 'finalizado') return 'Resultado final';
+  if (!apiStatus) return isLive ? <>Resultado <span className="text-rose-500">en vivo</span></> : 'Resultado';
+  if (apiStatus === 'HT') return '⏸ Medio tiempo';
+  if (apiStatus === '1H') return <>Primer tiempo{minuto ? <> · <span className="text-rose-500">{minuto}'</span></> : null}</>;
+  if (apiStatus === '2H') return <>Segundo tiempo{minuto ? <> · <span className="text-rose-500">{minuto}'</span></> : null}</>;
+  if (['FT','ET','AET','BT','P','PEN'].includes(apiStatus)) return 'Resultado final';
+  return isLive ? <>Resultado <span className="text-rose-500">en vivo</span></> : 'Resultado';
 }
 
 interface Prediction {
@@ -371,9 +383,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-foreground/5 border border-border">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                  {match.estado === 'finalizado' || !isLive
-                    ? 'Resultado'
-                    : <>Resultado <span className="text-rose-500">en vivo</span></>}
+                  {getPhaseLabel(match.api_status, match.minuto, isLive, match.estado)}
                 </span>
                 <span className="font-score text-xl font-bold text-foreground">
                   {match.goles_a} – {match.goles_b}

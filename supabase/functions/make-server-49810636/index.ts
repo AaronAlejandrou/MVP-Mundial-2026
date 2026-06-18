@@ -333,9 +333,9 @@ app.get("/make-server-49810636/matches/results", async (c) => {
   try {
     const leagueId = c.req.query("leagueId");
     if (!leagueId) return c.json({ error: "leagueId requerido" }, 400);
-    const { data: results } = await getDb().from("match_results").select("match_id, goles_a, goles_b, estado, updated_at").eq("league_id", leagueId);
+    const { data: results } = await getDb().from("match_results").select("match_id, goles_a, goles_b, estado, api_status, minuto, updated_at").eq("league_id", leagueId);
     const map: Record<number, any> = {};
-    (results || []).forEach((r: any) => { map[r.match_id] = { matchId:r.match_id, golesA:r.goles_a, golesB:r.goles_b, estado:r.estado, updatedAt:r.updated_at }; });
+    (results || []).forEach((r: any) => { map[r.match_id] = { matchId:r.match_id, golesA:r.goles_a, golesB:r.goles_b, estado:r.estado, apiStatus:r.api_status, minuto:r.minuto, updatedAt:r.updated_at }; });
     return c.json({ results: map });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
@@ -365,6 +365,241 @@ const LOSER_MAP: Record<number, { match: number, slot: 'team1' | 'team2' }> = {
   101: { match: 103, slot: 'team1' }, 102: { match: 103, slot: 'team2' },
 };
 
+// ── Live Poller — TheSportsDB integration ─────────────────────────────────────
+
+const DICT_ES_EN: Record<string,string> = {
+  "México":"Mexico","Sudáfrica":"South Africa","Corea del Sur":"South Korea",
+  "República Checa":"Czech Republic","Canadá":"Canada",
+  "Bosnia & Herzegovina":"Bosnia and Herzegovina","Catar":"Qatar","Suiza":"Switzerland",
+  "Brasil":"Brazil","Marruecos":"Morocco","Haití":"Haiti","Escocia":"Scotland",
+  "USA":"United States","Paraguay":"Paraguay","Australia":"Australia","Turquía":"Turkey",
+  "Alemania":"Germany","Curazao":"Curacao","Costa de Marfil":"Ivory Coast","Ecuador":"Ecuador",
+  "Países Bajos":"Netherlands","Japón":"Japan","Suecia":"Sweden","Túnez":"Tunisia",
+  "Bélgica":"Belgium","Egipto":"Egypt","Irán":"Iran","Nueva Zelanda":"New Zealand",
+  "España":"Spain","Cabo Verde":"Cape Verde","Arabia Saudita":"Saudi Arabia","Uruguay":"Uruguay",
+  "Francia":"France","Senegal":"Senegal","Iraq":"Iraq","Noruega":"Norway",
+  "Argentina":"Argentina","Argelia":"Algeria","Austria":"Austria","Jordania":"Jordan",
+  "Portugal":"Portugal","DR Congo":"DR Congo","Uzbekistán":"Uzbekistan","Colombia":"Colombia",
+  "Inglaterra":"England","Croacia":"Croatia","Ghana":"Ghana","Panamá":"Panama",
+};
+
+// Shared group stage data — used by poller AND bracket/standings-preview
+const GROUP_MATCHES_DATA: {id:number;a:string;b:string;grupo:string}[] = [
+  {id:1,a:"México",b:"Sudáfrica",grupo:"A"},{id:2,a:"Corea del Sur",b:"República Checa",grupo:"A"},
+  {id:3,a:"República Checa",b:"Sudáfrica",grupo:"A"},{id:4,a:"México",b:"Corea del Sur",grupo:"A"},
+  {id:5,a:"República Checa",b:"México",grupo:"A"},{id:6,a:"Sudáfrica",b:"Corea del Sur",grupo:"A"},
+  {id:7,a:"Canadá",b:"Bosnia & Herzegovina",grupo:"B"},{id:8,a:"Catar",b:"Suiza",grupo:"B"},
+  {id:9,a:"Suiza",b:"Bosnia & Herzegovina",grupo:"B"},{id:10,a:"Canadá",b:"Catar",grupo:"B"},
+  {id:11,a:"Suiza",b:"Canadá",grupo:"B"},{id:12,a:"Bosnia & Herzegovina",b:"Catar",grupo:"B"},
+  {id:13,a:"Brasil",b:"Marruecos",grupo:"C"},{id:14,a:"Haití",b:"Escocia",grupo:"C"},
+  {id:15,a:"Escocia",b:"Marruecos",grupo:"C"},{id:16,a:"Brasil",b:"Haití",grupo:"C"},
+  {id:17,a:"Escocia",b:"Brasil",grupo:"C"},{id:18,a:"Marruecos",b:"Haití",grupo:"C"},
+  {id:19,a:"USA",b:"Paraguay",grupo:"D"},{id:20,a:"Australia",b:"Turquía",grupo:"D"},
+  {id:21,a:"USA",b:"Australia",grupo:"D"},{id:22,a:"Turquía",b:"Paraguay",grupo:"D"},
+  {id:23,a:"Turquía",b:"USA",grupo:"D"},{id:24,a:"Paraguay",b:"Australia",grupo:"D"},
+  {id:25,a:"Alemania",b:"Curazao",grupo:"E"},{id:26,a:"Costa de Marfil",b:"Ecuador",grupo:"E"},
+  {id:27,a:"Alemania",b:"Costa de Marfil",grupo:"E"},{id:28,a:"Ecuador",b:"Curazao",grupo:"E"},
+  {id:29,a:"Curazao",b:"Costa de Marfil",grupo:"E"},{id:30,a:"Ecuador",b:"Alemania",grupo:"E"},
+  {id:31,a:"Países Bajos",b:"Japón",grupo:"F"},{id:32,a:"Suecia",b:"Túnez",grupo:"F"},
+  {id:33,a:"Países Bajos",b:"Suecia",grupo:"F"},{id:34,a:"Túnez",b:"Japón",grupo:"F"},
+  {id:35,a:"Japón",b:"Suecia",grupo:"F"},{id:36,a:"Túnez",b:"Países Bajos",grupo:"F"},
+  {id:37,a:"Bélgica",b:"Egipto",grupo:"G"},{id:38,a:"Irán",b:"Nueva Zelanda",grupo:"G"},
+  {id:39,a:"Bélgica",b:"Irán",grupo:"G"},{id:40,a:"Nueva Zelanda",b:"Egipto",grupo:"G"},
+  {id:41,a:"Egipto",b:"Irán",grupo:"G"},{id:42,a:"Nueva Zelanda",b:"Bélgica",grupo:"G"},
+  {id:43,a:"España",b:"Cabo Verde",grupo:"H"},{id:44,a:"Arabia Saudita",b:"Uruguay",grupo:"H"},
+  {id:45,a:"España",b:"Arabia Saudita",grupo:"H"},{id:46,a:"Uruguay",b:"Cabo Verde",grupo:"H"},
+  {id:47,a:"Cabo Verde",b:"Arabia Saudita",grupo:"H"},{id:48,a:"Uruguay",b:"España",grupo:"H"},
+  {id:49,a:"Francia",b:"Senegal",grupo:"I"},{id:50,a:"Iraq",b:"Noruega",grupo:"I"},
+  {id:51,a:"Francia",b:"Iraq",grupo:"I"},{id:52,a:"Noruega",b:"Senegal",grupo:"I"},
+  {id:53,a:"Noruega",b:"Francia",grupo:"I"},{id:54,a:"Senegal",b:"Iraq",grupo:"I"},
+  {id:55,a:"Argentina",b:"Argelia",grupo:"J"},{id:56,a:"Austria",b:"Jordania",grupo:"J"},
+  {id:57,a:"Argentina",b:"Austria",grupo:"J"},{id:58,a:"Jordania",b:"Argelia",grupo:"J"},
+  {id:59,a:"Argelia",b:"Austria",grupo:"J"},{id:60,a:"Jordania",b:"Argentina",grupo:"J"},
+  {id:61,a:"Portugal",b:"DR Congo",grupo:"K"},{id:62,a:"Uzbekistán",b:"Colombia",grupo:"K"},
+  {id:63,a:"Portugal",b:"Uzbekistán",grupo:"K"},{id:64,a:"Colombia",b:"DR Congo",grupo:"K"},
+  {id:65,a:"Colombia",b:"Portugal",grupo:"K"},{id:66,a:"DR Congo",b:"Uzbekistán",grupo:"K"},
+  {id:67,a:"Inglaterra",b:"Croacia",grupo:"L"},{id:68,a:"Ghana",b:"Panamá",grupo:"L"},
+  {id:69,a:"Inglaterra",b:"Ghana",grupo:"L"},{id:70,a:"Panamá",b:"Croacia",grupo:"L"},
+  {id:71,a:"Panamá",b:"Inglaterra",grupo:"L"},{id:72,a:"Croacia",b:"Ghana",grupo:"L"},
+];
+
+function nmatch(a: string, b: string): boolean {
+  const na = a.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
+  const nb = b.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
+  return na===nb || na.includes(nb) || nb.includes(na);
+}
+
+function findGroupMatchByTeams(homeEn: string, awayEn: string): {matchId:number;aEs:string;bEs:string}|null {
+  for (const m of GROUP_MATCHES_DATA) {
+    const aEn = DICT_ES_EN[m.a]||m.a;
+    const bEn = DICT_ES_EN[m.b]||m.b;
+    if (nmatch(homeEn,aEn)&&nmatch(awayEn,bEn)) return {matchId:m.id,aEs:m.a,bEs:m.b};
+    if (nmatch(homeEn,bEn)&&nmatch(awayEn,aEn)) return {matchId:m.id,aEs:m.b,bEs:m.a};
+  }
+  return null;
+}
+
+function assignScores(
+  event: {intHomeScore:any;intAwayScore:any;strHomeTeam:string},
+  aEs: string
+): {golesA:number;golesB:number} {
+  const h = parseInt(String(event.intHomeScore))||0;
+  const a = parseInt(String(event.intAwayScore))||0;
+  const aEn = DICT_ES_EN[aEs]||aEs;
+  return nmatch(event.strHomeTeam,aEn) ? {golesA:h,golesB:a} : {golesA:a,golesB:h};
+}
+
+function mapApiStatus(strStatus: string): 'en_curso'|'finalizado' {
+  return ['1H','HT','2H'].includes(strStatus) ? 'en_curso' : 'finalizado';
+}
+
+async function advanceBracket(matchId:number, leagueId:string, golesA:number, golesB:number, db:any) {
+  const {data:mt} = await db.from("knockout_match_teams").select("team1,team2").eq("league_id",leagueId).eq("match_id",matchId).maybeSingle();
+  if (!mt) return;
+  let winner="", loser="";
+  if (golesA>golesB){winner=mt.team1;loser=mt.team2;}
+  else if (golesB>golesA){winner=mt.team2;loser=mt.team1;}
+  if (!winner) return;
+  const nextW=NEXT_MATCH_MAP[matchId];
+  if (nextW) {
+    const {data:ext}=await db.from("knockout_match_teams").select("*").eq("league_id",leagueId).eq("match_id",nextW.match).maybeSingle();
+    if (ext) await db.from("knockout_match_teams").update({[nextW.slot]:winner}).eq("league_id",leagueId).eq("match_id",nextW.match);
+    else await db.from("knockout_match_teams").insert({league_id:leagueId,match_id:nextW.match,team1:nextW.slot==='team1'?winner:"",team2:nextW.slot==='team2'?winner:""});
+  }
+  const nextL=LOSER_MAP[matchId];
+  if (nextL&&loser) {
+    const {data:ext}=await db.from("knockout_match_teams").select("*").eq("league_id",leagueId).eq("match_id",nextL.match).maybeSingle();
+    if (ext) await db.from("knockout_match_teams").update({[nextL.slot]:loser}).eq("league_id",leagueId).eq("match_id",nextL.match);
+    else await db.from("knockout_match_teams").insert({league_id:leagueId,match_id:nextL.match,team1:nextL.slot==='team1'?loser:"",team2:nextL.slot==='team2'?loser:""});
+  }
+}
+
+interface ApplyResultParams {
+  matchId:number; leagueId:string; golesA:number; golesB:number;
+  estado:'en_curso'|'finalizado'; source:'manual'|'auto';
+  updatedBy:string|null; apiStatus:string|null; minuto:string|null;
+  rawApiStatus?:string;
+}
+
+async function applyResult(p: ApplyResultParams) {
+  const db = getDb();
+  const {data:ex} = await db.from("match_results")
+    .select("id,source,estado,goles_a,goles_b")
+    .eq("match_id",p.matchId).eq("league_id",p.leagueId).maybeSingle();
+  if (p.source==='auto'&&ex?.source==='manual') return;
+  if (p.source==='auto'&&ex?.estado==='finalizado') return;
+  let golesA=p.golesA, golesB=p.golesB;
+  // Freeze score at last known 2H value for post-90' statuses (ET/AET/PEN/etc)
+  if (p.source==='auto'&&p.rawApiStatus&&['ET','AET','BT','P','PEN'].includes(p.rawApiStatus)&&ex) {
+    golesA=ex.goles_a; golesB=ex.goles_b;
+  }
+  const now = new Date().toISOString();
+  const row: any = {goles_a:golesA,goles_b:golesB,estado:p.estado,source:p.source,api_status:p.apiStatus,minuto:p.minuto,updated_at:now};
+  if (p.updatedBy) row.updated_by=p.updatedBy;
+  let writeErr: any = null;
+  if (ex) {
+    const {error} = await db.from("match_results").update(row).eq("id",ex.id);
+    writeErr = error;
+  } else {
+    const {error} = await db.from("match_results").insert({...row,match_id:p.matchId,league_id:p.leagueId});
+    writeErr = error;
+  }
+  if (writeErr) throw new Error(writeErr.message||"Error guardando resultado");
+  if (p.estado==='finalizado'||p.estado==='en_curso') {
+    await calculatePoints(p.matchId,p.leagueId,golesA,golesB);
+  }
+  if (p.estado==='finalizado'&&p.matchId>=73) {
+    await advanceBracket(p.matchId,p.leagueId,golesA,golesB,db);
+  }
+}
+
+// ── API helpers (TheSportsDB) ─────────────────────────────────────────────────
+
+const SPORTSDB_API = 'https://www.thesportsdb.com/api/v1/json/123';
+const SPORTSDB_LID = '4429';
+
+function sdbUtcDate(offsetDays=0): string {
+  const d = new Date(); d.setUTCDate(d.getUTCDate()+offsetDays);
+  return d.toISOString().slice(0,10);
+}
+
+async function sdbDiscover(): Promise<any[]> {
+  const all: any[] = [];
+  for (const d of [sdbUtcDate(0),sdbUtcDate(1)]) {
+    try {
+      const res  = await fetch(`${SPORTSDB_API}/eventsday.php?d=${d}&l=${SPORTSDB_LID}`);
+      const json = await res.json();
+      const evts = (json.events||json.event||[]).filter((e:any)=>
+        e.idLeague===SPORTSDB_LID && e.strStatus!=='NS' &&
+        (e.strSeason==='2026'||(e.strFilename||'').startsWith('FIFA World Cup 2026'))
+      );
+      all.push(...evts);
+    } catch { /* ignore per-day fetch errors */ }
+  }
+  return all;
+}
+
+async function sdbLookup(idEvent: string): Promise<any|null> {
+  try {
+    const res  = await fetch(`${SPORTSDB_API}/lookupevent.php?id=${idEvent}`);
+    const json = await res.json();
+    return (json.events||json.event||[])[0]||null;
+  } catch { return null; }
+}
+
+async function pollLiveOnce(leagueIds: string[]): Promise<void> {
+  const stubs = await sdbDiscover();
+  if (!stubs.length) return;
+  const db = getDb();
+  // Load all knockout teams once (all leagues, distinct by match_id)
+  const {data:koRows} = await db.from("knockout_match_teams").select("match_id,team1,team2").gte("match_id",73);
+  const koMap: Record<number,{team1:string;team2:string}> = {};
+  (koRows||[]).forEach((r:any)=>{ if (!koMap[r.match_id]) koMap[r.match_id]={team1:r.team1,team2:r.team2}; });
+
+  for (const stub of stubs) {
+    const event = await sdbLookup(stub.idEvent);
+    if (!event) continue;
+    const homeEn = event.strHomeTeam||'';
+    const awayEn = event.strAwayTeam||'';
+    const strStatus = event.strStatus||'NS';
+    if (strStatus==='NS') continue;
+
+    let matchId: number|null = null;
+    let aEs = homeEn;
+
+    const gm = findGroupMatchByTeams(homeEn,awayEn);
+    if (gm) {
+      matchId=gm.matchId; aEs=gm.aEs;
+    } else {
+      for (const [mid,row] of Object.entries(koMap)) {
+        const t1En=DICT_ES_EN[row.team1]||row.team1;
+        const t2En=DICT_ES_EN[row.team2]||row.team2;
+        const fwd=nmatch(homeEn,t1En)&&nmatch(awayEn,t2En);
+        const rev=nmatch(homeEn,t2En)&&nmatch(awayEn,t1En);
+        if (fwd||rev) { matchId=parseInt(mid); aEs=fwd?row.team1:row.team2; break; }
+      }
+    }
+
+    if (!matchId) { console.log(`[poller] no match: ${homeEn} vs ${awayEn}`); continue; }
+
+    const {golesA,golesB} = assignScores(event,aEs);
+    const estado = mapApiStatus(strStatus);
+
+    for (const leagueId of leagueIds) {
+      try {
+        await applyResult({matchId,leagueId,golesA,golesB,estado,source:'auto',updatedBy:null,apiStatus:strStatus,minuto:event.strProgress||null,rawApiStatus:strStatus});
+      } catch(err) { console.error(`[poller] applyResult error match ${matchId} league ${leagueId}:`,err); }
+    }
+  }
+}
+
+async function runPollLoop(leagueIds: string[]) {
+  for (let i=0;i<12;i++) {
+    try { await pollLiveOnce(leagueIds); } catch(err) { console.error('[poller] iteration error:',err); }
+    if (i<11) await new Promise(r=>setTimeout(r,5000));
+  }
+}
+
 app.post("/make-server-49810636/matches/:matchId/result", requireAuth, async (c) => {
   try {
     const user = c.get("user");
@@ -374,45 +609,12 @@ app.post("/make-server-49810636/matches/:matchId/result", requireAuth, async (c)
     const { data: league } = await db.from("leagues").select("admin_id").eq("id", leagueId).maybeSingle();
     if (!league) return c.json({ error: "Liga no encontrada" }, 404);
     if (league.admin_id !== user.id) return c.json({ error: "Solo el admin" }, 403);
-    const { data: existingResult } = await db.from("match_results").select("id").eq("match_id", matchId).eq("league_id", leagueId).maybeSingle();
-    let writeError: any = null;
-    if (existingResult) {
-      const { error } = await db.from("match_results").update({ goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() }).eq("id", existingResult.id);
-      writeError = error;
-    } else {
-      const { error } = await db.from("match_results").insert({ match_id:matchId, league_id:leagueId, goles_a:golesA, goles_b:golesB, estado:estado||"finalizado", updated_by:user.id, updated_at:new Date().toISOString() });
-      writeError = error;
-    }
-    // Si la base rechaza la escritura, fallar de verdad (no calcular puntos fantasma ni devolver 200 falso)
-    if (writeError) return c.json({ error: "No se pudo guardar el resultado", details: writeError.message }, 500);
-    if (estado === "finalizado" || estado === "en_curso") {
-      await calculatePoints(matchId, leagueId, golesA, golesB);
-
-      // Auto-advance knockout winners — solo al finalizar, no en vivo
-      if (estado === "finalizado" && matchId >= 73) {
-        const { data: mt } = await db.from("knockout_match_teams").select("team1, team2").eq("league_id", leagueId).eq("match_id", matchId).maybeSingle();
-        if (mt) {
-          let winner = ""; let loser = "";
-          if (golesA > golesB) { winner = mt.team1; loser = mt.team2; }
-          else if (golesB > golesA) { winner = mt.team2; loser = mt.team1; }
-          
-          if (winner) {
-            const nextW = NEXT_MATCH_MAP[matchId];
-            if (nextW) {
-              const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", nextW.match).maybeSingle();
-              if (ext) await db.from("knockout_match_teams").update({ [nextW.slot]: winner }).eq("league_id", leagueId).eq("match_id", nextW.match);
-              else await db.from("knockout_match_teams").insert({ league_id: leagueId, match_id: nextW.match, team1: nextW.slot === 'team1' ? winner : "", team2: nextW.slot === 'team2' ? winner : "" });
-            }
-            const nextL = LOSER_MAP[matchId];
-            if (nextL && loser) {
-              const { data: ext } = await db.from("knockout_match_teams").select("*").eq("league_id", leagueId).eq("match_id", nextL.match).maybeSingle();
-              if (ext) await db.from("knockout_match_teams").update({ [nextL.slot]: loser }).eq("league_id", leagueId).eq("match_id", nextL.match);
-              else await db.from("knockout_match_teams").insert({ league_id: leagueId, match_id: nextL.match, team1: nextL.slot === 'team1' ? loser : "", team2: nextL.slot === 'team2' ? loser : "" });
-            }
-          }
-        }
-      }
-    }
+    await applyResult({
+      matchId, leagueId, golesA, golesB,
+      estado: (estado||"finalizado") as 'en_curso'|'finalizado',
+      source:'manual', updatedBy:user.id,
+      apiStatus:null, minuto:null,
+    });
     return c.json({ message: "Resultado actualizado" });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
@@ -692,93 +894,7 @@ app.get("/make-server-49810636/bracket/standings-preview", requireAuth, async (c
       .lte("match_id", 72)
       .eq("estado", "finalizado");
 
-    // Definición estática de los grupos (igual que groupStageMatches.ts)
-    const MATCHES: { id: number; a: string; b: string; grupo: string }[] = [
-      // Grupo A
-      { id:1,  a:"México",          b:"Sudáfrica",           grupo:"A" },
-      { id:2,  a:"Corea del Sur",   b:"República Checa",     grupo:"A" },
-      { id:3,  a:"República Checa", b:"Sudáfrica",           grupo:"A" },
-      { id:4,  a:"México",          b:"Corea del Sur",       grupo:"A" },
-      { id:5,  a:"República Checa", b:"México",              grupo:"A" },
-      { id:6,  a:"Sudáfrica",       b:"Corea del Sur",       grupo:"A" },
-      // Grupo B
-      { id:7,  a:"Canadá",          b:"Bosnia & Herzegovina",grupo:"B" },
-      { id:8,  a:"Catar",           b:"Suiza",               grupo:"B" },
-      { id:9,  a:"Suiza",           b:"Bosnia & Herzegovina",grupo:"B" },
-      { id:10, a:"Canadá",          b:"Catar",               grupo:"B" },
-      { id:11, a:"Suiza",           b:"Canadá",              grupo:"B" },
-      { id:12, a:"Bosnia & Herzegovina", b:"Catar",          grupo:"B" },
-      // Grupo C
-      { id:13, a:"Brasil",          b:"Marruecos",           grupo:"C" },
-      { id:14, a:"Haití",           b:"Escocia",             grupo:"C" },
-      { id:15, a:"Escocia",         b:"Marruecos",           grupo:"C" },
-      { id:16, a:"Brasil",          b:"Haití",               grupo:"C" },
-      { id:17, a:"Escocia",         b:"Brasil",              grupo:"C" },
-      { id:18, a:"Marruecos",       b:"Haití",               grupo:"C" },
-      // Grupo D
-      { id:19, a:"USA",             b:"Paraguay",            grupo:"D" },
-      { id:20, a:"Australia",       b:"Turquía",             grupo:"D" },
-      { id:21, a:"USA",             b:"Australia",           grupo:"D" },
-      { id:22, a:"Turquía",         b:"Paraguay",            grupo:"D" },
-      { id:23, a:"Turquía",         b:"USA",                 grupo:"D" },
-      { id:24, a:"Paraguay",        b:"Australia",           grupo:"D" },
-      // Grupo E
-      { id:25, a:"Alemania",        b:"Curazao",             grupo:"E" },
-      { id:26, a:"Costa de Marfil", b:"Ecuador",             grupo:"E" },
-      { id:27, a:"Alemania",        b:"Costa de Marfil",     grupo:"E" },
-      { id:28, a:"Ecuador",         b:"Curazao",             grupo:"E" },
-      { id:29, a:"Curazao",         b:"Costa de Marfil",     grupo:"E" },
-      { id:30, a:"Ecuador",         b:"Alemania",            grupo:"E" },
-      // Grupo F
-      { id:31, a:"Países Bajos",    b:"Japón",               grupo:"F" },
-      { id:32, a:"Suecia",          b:"Túnez",               grupo:"F" },
-      { id:33, a:"Países Bajos",    b:"Suecia",              grupo:"F" },
-      { id:34, a:"Túnez",           b:"Japón",               grupo:"F" },
-      { id:35, a:"Japón",           b:"Suecia",              grupo:"F" },
-      { id:36, a:"Túnez",           b:"Países Bajos",        grupo:"F" },
-      // Grupo G
-      { id:37, a:"Bélgica",         b:"Egipto",              grupo:"G" },
-      { id:38, a:"Irán",            b:"Nueva Zelanda",       grupo:"G" },
-      { id:39, a:"Bélgica",         b:"Irán",                grupo:"G" },
-      { id:40, a:"Nueva Zelanda",   b:"Egipto",              grupo:"G" },
-      { id:41, a:"Egipto",          b:"Irán",                grupo:"G" },
-      { id:42, a:"Nueva Zelanda",   b:"Bélgica",             grupo:"G" },
-      // Grupo H
-      { id:43, a:"España",          b:"Cabo Verde",          grupo:"H" },
-      { id:44, a:"Arabia Saudita",  b:"Uruguay",             grupo:"H" },
-      { id:45, a:"España",          b:"Arabia Saudita",      grupo:"H" },
-      { id:46, a:"Uruguay",         b:"Cabo Verde",          grupo:"H" },
-      { id:47, a:"Cabo Verde",      b:"Arabia Saudita",      grupo:"H" },
-      { id:48, a:"Uruguay",         b:"España",              grupo:"H" },
-      // Grupo I
-      { id:49, a:"Francia",         b:"Senegal",             grupo:"I" },
-      { id:50, a:"Iraq",            b:"Noruega",             grupo:"I" },
-      { id:51, a:"Francia",         b:"Iraq",                grupo:"I" },
-      { id:52, a:"Noruega",         b:"Senegal",             grupo:"I" },
-      { id:53, a:"Noruega",         b:"Francia",             grupo:"I" },
-      { id:54, a:"Senegal",         b:"Iraq",                grupo:"I" },
-      // Grupo J
-      { id:55, a:"Argentina",       b:"Argelia",             grupo:"J" },
-      { id:56, a:"Austria",         b:"Jordania",            grupo:"J" },
-      { id:57, a:"Argentina",       b:"Austria",             grupo:"J" },
-      { id:58, a:"Jordania",        b:"Argelia",             grupo:"J" },
-      { id:59, a:"Argelia",         b:"Austria",             grupo:"J" },
-      { id:60, a:"Jordania",        b:"Argentina",           grupo:"J" },
-      // Grupo K
-      { id:61, a:"Portugal",        b:"DR Congo",            grupo:"K" },
-      { id:62, a:"Uzbekistán",      b:"Colombia",            grupo:"K" },
-      { id:63, a:"Portugal",        b:"Uzbekistán",          grupo:"K" },
-      { id:64, a:"Colombia",        b:"DR Congo",            grupo:"K" },
-      { id:65, a:"Colombia",        b:"Portugal",            grupo:"K" },
-      { id:66, a:"DR Congo",        b:"Uzbekistán",          grupo:"K" },
-      // Grupo L
-      { id:67, a:"Inglaterra",      b:"Croacia",             grupo:"L" },
-      { id:68, a:"Ghana",           b:"Panamá",              grupo:"L" },
-      { id:69, a:"Inglaterra",      b:"Ghana",               grupo:"L" },
-      { id:70, a:"Panamá",          b:"Croacia",             grupo:"L" },
-      { id:71, a:"Panamá",          b:"Inglaterra",          grupo:"L" },
-      { id:72, a:"Croacia",         b:"Ghana",               grupo:"L" },
-    ];
+    const MATCHES = GROUP_MATCHES_DATA;
 
     // Construir mapa de resultados
     const resultMap: Record<number, { ga: number; gb: number }> = {};
@@ -979,5 +1095,51 @@ async function calculatePoints(matchId: number, leagueId: string, actualA: numbe
     }
   } catch(err) { console.error("calculatePoints error:", err); }
 }
+
+// ── Cron / Live Poller ────────────────────────────────────────────────────────
+
+app.post("/make-server-49810636/cron/poll-live", async (c) => {
+  try {
+    const db = getDb();
+    const { data: leagues } = await db.from("leagues").select("id");
+    const leagueIds = (leagues||[]).map((l:any)=>l.id);
+    if (!leagueIds.length) return c.json({ message:"Sin ligas" });
+    // Fire-and-forget: respond immediately, loop runs in background
+    const pollPromise = runPollLoop(leagueIds);
+    try { (globalThis as any).EdgeRuntime?.waitUntil(pollPromise); } catch {}
+    pollPromise.catch((err:any)=>console.error('[poller] loop error:',err));
+    return c.json({ message:"Poll iniciado", leagues:leagueIds.length });
+  } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
+
+// POST /matches/:matchId/knockout-winner — advance bracket for ET/PEN draw matches
+app.post("/make-server-49810636/matches/:matchId/knockout-winner", requireAuth, async (c) => {
+  try {
+    const user = c.get("user");
+    const matchId = parseInt(c.req.param("matchId"));
+    const { leagueId, winner } = await c.req.json();
+    if (!leagueId||!winner) return c.json({ error:"leagueId y winner requeridos" }, 400);
+    if (matchId<73) return c.json({ error:"Solo para partidos eliminatorios" }, 400);
+    const db = getDb();
+    const { data: league } = await db.from("leagues").select("admin_id").eq("id",leagueId).maybeSingle();
+    if (!league||league.admin_id!==user.id) return c.json({ error:"No autorizado" }, 403);
+    const { data: mt } = await db.from("knockout_match_teams").select("team1,team2").eq("league_id",leagueId).eq("match_id",matchId).maybeSingle();
+    if (!mt) return c.json({ error:"Equipos no encontrados" }, 404);
+    const loser = winner===mt.team1 ? mt.team2 : mt.team1;
+    const nextW=NEXT_MATCH_MAP[matchId];
+    if (nextW) {
+      const {data:ext}=await db.from("knockout_match_teams").select("*").eq("league_id",leagueId).eq("match_id",nextW.match).maybeSingle();
+      if (ext) await db.from("knockout_match_teams").update({[nextW.slot]:winner}).eq("league_id",leagueId).eq("match_id",nextW.match);
+      else await db.from("knockout_match_teams").insert({league_id:leagueId,match_id:nextW.match,team1:nextW.slot==='team1'?winner:"",team2:nextW.slot==='team2'?winner:""});
+    }
+    const nextL=LOSER_MAP[matchId];
+    if (nextL&&loser) {
+      const {data:ext}=await db.from("knockout_match_teams").select("*").eq("league_id",leagueId).eq("match_id",nextL.match).maybeSingle();
+      if (ext) await db.from("knockout_match_teams").update({[nextL.slot]:loser}).eq("league_id",leagueId).eq("match_id",nextL.match);
+      else await db.from("knockout_match_teams").insert({league_id:leagueId,match_id:nextL.match,team1:nextL.slot==='team1'?loser:"",team2:nextL.slot==='team2'?loser:""});
+    }
+    return c.json({ message:"Bracket avanzado", winner, loser });
+  } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
 
 Deno.serve(app.fetch);

@@ -352,6 +352,8 @@ export default function App() {
     goles_a: matchResults[m.id]?.golesA ?? null,
     goles_b: matchResults[m.id]?.golesB ?? null,
     estado: (matchResults[m.id]?.estado ?? m.estado ?? 'pendiente') as 'pendiente'|'en_curso'|'finalizado',
+    api_status: matchResults[m.id]?.apiStatus ?? null,
+    minuto: matchResults[m.id]?.minuto ?? null,
   }));
   liveMatchesRef.current = enrichedMatches;
 
