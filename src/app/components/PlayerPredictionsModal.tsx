@@ -36,18 +36,24 @@ export function PlayerPredictionsModal({ player, leagueId, accessToken, currentU
   const todayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    let alive = true;
+    const load = async (initial: boolean) => {
+      if (initial) setLoading(true);
       try {
         const res = await apiFetch(`/player-predictions/locked?userId=${player.id}&leagueId=${leagueId}`, { token: accessToken });
         if (res.ok) {
           const data = await res.json();
-          setPredictions(data.predictions || []);
+          if (alive) setPredictions(data.predictions || []);
         }
       } catch { /* silent */ }
-      setLoading(false);
+      if (initial && alive) setLoading(false);
     };
-    load();
+    load(true);
+    // Refresco en vivo: mientras el modal esté abierto, re-consulta cada 15s
+    // en silencio (sin spinner) para que el marcador/puntos provisionales se
+    // muevan solos sin tener que cerrar y reabrir.
+    const id = setInterval(() => load(false), 15000);
+    return () => { alive = false; clearInterval(id); };
   }, [player.id, leagueId]);
 
   useEffect(() => {

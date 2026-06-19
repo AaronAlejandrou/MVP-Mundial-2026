@@ -55,35 +55,38 @@ export function MatchPredictionsModal({ match, leagueId, accessToken, currentUse
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    let alive = true;
+    const load = async (initial: boolean) => {
+      if (initial) setLoading(true);
       try {
         if (mode === 'summary') {
           const res = await apiFetch(`/match-predictions/summary?matchId=${match.id}&leagueId=${leagueId}`);
           if (res.ok) {
             const data = await res.json();
-            setSummary(data.summary || []);
-            setTotal(data.total || 0);
+            if (alive) { setSummary(data.summary || []); setTotal(data.total || 0); }
           }
         } else {
           const res = await apiFetch(`/match-predictions/all?matchId=${match.id}&leagueId=${leagueId}`, { token: accessToken });
           if (res.ok) {
             const data = await res.json();
-            setPredictions(data.predictions || []);
-            setTotal(data.predictions?.length || 0);
+            if (alive) { setPredictions(data.predictions || []); setTotal(data.predictions?.length || 0); }
           }
           if (mode === 'winners') {
             const snapRes = await apiFetch(`/match-predictions/ranking-snapshot?matchId=${match.id}&leagueId=${leagueId}`, { token: accessToken });
             if (snapRes.ok) {
               const snapData = await snapRes.json();
-              setSnapshot(snapData.snapshot || []);
+              if (alive) setSnapshot(snapData.snapshot || []);
             }
           }
         }
       } catch { /* silent */ }
-      setLoading(false);
+      if (initial && alive) setLoading(false);
     };
-    load();
+    load(true);
+    // Refresco en vivo: re-consulta cada 15s en silencio mientras el modal está
+    // abierto, para que el ranking y los puntos provisionales se actualicen solos.
+    const id = setInterval(() => load(false), 15000);
+    return () => { alive = false; clearInterval(id); };
   }, [match.id, leagueId, mode]);
 
   const maxCount = summary.length > 0 ? summary[0].count : 1;

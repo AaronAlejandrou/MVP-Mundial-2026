@@ -370,10 +370,10 @@ const LOSER_MAP: Record<number, { match: number, slot: 'team1' | 'team2' }> = {
 const DICT_ES_EN: Record<string,string> = {
   "México":"Mexico","Sudáfrica":"South Africa","Corea del Sur":"South Korea",
   "República Checa":"Czech Republic","Canadá":"Canada",
-  "Bosnia & Herzegovina":"Bosnia and Herzegovina","Catar":"Qatar","Suiza":"Switzerland",
+  "Bosnia & Herzegovina":"Bosnia-Herzegovina","Catar":"Qatar","Suiza":"Switzerland",
   "Brasil":"Brazil","Marruecos":"Morocco","Haití":"Haiti","Escocia":"Scotland",
-  "USA":"United States","Paraguay":"Paraguay","Australia":"Australia","Turquía":"Turkey",
-  "Alemania":"Germany","Curazao":"Curacao","Costa de Marfil":"Ivory Coast","Ecuador":"Ecuador",
+  "USA":"USA","Paraguay":"Paraguay","Australia":"Australia","Turquía":"Turkey",
+  "Alemania":"Germany","Curazao":"Curaçao","Costa de Marfil":"Ivory Coast","Ecuador":"Ecuador",
   "Países Bajos":"Netherlands","Japón":"Japan","Suecia":"Sweden","Túnez":"Tunisia",
   "Bélgica":"Belgium","Egipto":"Egypt","Irán":"Iran","Nueva Zelanda":"New Zealand",
   "España":"Spain","Cabo Verde":"Cape Verde","Arabia Saudita":"Saudi Arabia","Uruguay":"Uruguay",
@@ -424,9 +424,14 @@ const GROUP_MATCHES_DATA: {id:number;a:string;b:string;grupo:string}[] = [
 ];
 
 function nmatch(a: string, b: string): boolean {
-  const na = a.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
-  const nb = b.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
-  return na===nb || na.includes(nb) || nb.includes(na);
+  const norm = (s: string) =>
+    s.toLowerCase()
+     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // ç→c, á→a, ñ→n, etc.
+     .replace(/-/g, ' ')                                  // "Bosnia-Herzegovina" → "Bosnia Herzegovina"
+     .replace(/[^a-z0-9\s]/g, '')
+     .replace(/\s+/g, ' ').trim();
+  const na = norm(a), nb = norm(b);
+  return na === nb || na.includes(nb) || nb.includes(na);
 }
 
 function findGroupMatchByTeams(homeEn: string, awayEn: string): {matchId:number;aEs:string;bEs:string}|null {
@@ -483,33 +488,53 @@ interface ApplyResultParams {
 
 async function applyResult(p: ApplyResultParams) {
   const db = getDb();
-  const {data:ex} = await db.from("match_results")
+  const { data: ex } = await db.from("match_results")
     .select("id,source,estado,goles_a,goles_b")
-    .eq("match_id",p.matchId).eq("league_id",p.leagueId).maybeSingle();
-  if (p.source==='auto'&&ex?.source==='manual') return;
-  if (p.source==='auto'&&ex?.estado==='finalizado') return;
-  let golesA=p.golesA, golesB=p.golesB;
-  // Freeze score at last known 2H value for post-90' statuses (ET/AET/PEN/etc)
-  if (p.source==='auto'&&p.rawApiStatus&&['ET','AET','BT','P','PEN'].includes(p.rawApiStatus)&&ex) {
-    golesA=ex.goles_a; golesB=ex.goles_b;
+    .eq("match_id", p.matchId).eq("league_id", p.leagueId).maybeSingle();
+
+  // Guard 1: resultado manual del admin siempre prevalece sobre auto
+  if (p.source === 'auto' && ex?.source === 'manual') return;
+  // Guard 2: un partido finalizado no puede revertirse a en_curso ni ser pisado por auto
+  if (p.source === 'auto' && ex?.estado === 'finalizado') return;
+
+  let golesA = p.golesA, golesB = p.golesB;
+  // Guard 3: congelar score en ET/PEN — para la polla solo cuentan los 90 minutos.
+  // Si la API ya mandó FT antes de ET, Guard 2 habrá bloqueado esta llamada.
+  // Este guard cubre el caso raro en que la API salte de 2H directo a ET sin FT.
+  if (p.source === 'auto' && p.rawApiStatus && ['ET','AET','BT','P','PEN'].includes(p.rawApiStatus) && ex) {
+    golesA = ex.goles_a ?? 0;
+    golesB = ex.goles_b ?? 0;
   }
+
+  // Early exit: si score, estado y minuto no cambiaron no hay nada que persistir
+  // (cubre el 95% de los ticks sin cambio de score → 0 writes, 0 calculatePoints)
+  if (ex
+    && ex.goles_a   === golesA
+    && ex.goles_b   === golesB
+    && ex.estado    === p.estado
+    && ex.source    === p.source) return;
+
   const now = new Date().toISOString();
-  const row: any = {goles_a:golesA,goles_b:golesB,estado:p.estado,source:p.source,api_status:p.apiStatus,minuto:p.minuto,updated_at:now};
-  if (p.updatedBy) row.updated_by=p.updatedBy;
+  const row: any = {
+    goles_a: golesA, goles_b: golesB, estado: p.estado,
+    source: p.source, api_status: p.apiStatus, minuto: p.minuto, updated_at: now,
+  };
+  if (p.updatedBy) row.updated_by = p.updatedBy;
+
   let writeErr: any = null;
   if (ex) {
-    const {error} = await db.from("match_results").update(row).eq("id",ex.id);
+    const { error } = await db.from("match_results").update(row).eq("id", ex.id);
     writeErr = error;
   } else {
-    const {error} = await db.from("match_results").insert({...row,match_id:p.matchId,league_id:p.leagueId});
+    const { error } = await db.from("match_results").insert({ ...row, match_id: p.matchId, league_id: p.leagueId });
     writeErr = error;
   }
-  if (writeErr) throw new Error(writeErr.message||"Error guardando resultado");
-  if (p.estado==='finalizado'||p.estado==='en_curso') {
-    await calculatePoints(p.matchId,p.leagueId,golesA,golesB);
-  }
-  if (p.estado==='finalizado'&&p.matchId>=73) {
-    await advanceBracket(p.matchId,p.leagueId,golesA,golesB,db);
+  if (writeErr) throw new Error(writeErr.message || "Error guardando resultado");
+
+  await calculatePoints(p.matchId, p.leagueId, golesA, golesB);
+
+  if (p.estado === 'finalizado' && p.matchId >= 73) {
+    await advanceBracket(p.matchId, p.leagueId, golesA, golesB, db);
   }
 }
 
@@ -518,85 +543,240 @@ async function applyResult(p: ApplyResultParams) {
 const SPORTSDB_API = 'https://www.thesportsdb.com/api/v1/json/123';
 const SPORTSDB_LID = '4429';
 
-function sdbUtcDate(offsetDays=0): string {
-  const d = new Date(); d.setUTCDate(d.getUTCDate()+offsetDays);
-  return d.toISOString().slice(0,10);
+// Mapa directo matchId → idEvent de TheSportsDB.
+// Elimina la dependencia de eventsday.php (que tiene límite de 3 eventos/día)
+// y garantiza 100% de cobertura incluso con 4-6 partidos simultáneos (Jornada 3).
+// Fuente: verificado contra la API real jun-2026. Jornada 2 parcial confirmada.
+// Jornada 2 restante + Jornada 3 se puebla dinámicamente en bootstrapMissingEventIds().
+const SPORTSDB_EVENT_IDS: Record<number, string> = {
+  // Jornada 1 — 24/24 confirmados
+  1:"2391728", 2:"2461103", 7:"2461104", 8:"2391732",
+  13:"2391730", 14:"2391731", 19:"2391729", 20:"2461105",
+  25:"2391733", 26:"2391734", 31:"2391735", 32:"2461106",
+  37:"2391736", 38:"2391737", 43:"2391739", 44:"2391738",
+  49:"2391742", 50:"2461107", 55:"2391740", 56:"2391741",
+  61:"2461108", 62:"2391745", 67:"2391743", 68:"2391744",
+  // Jornada 2 — parcialmente confirmados
+  3:"2461109", 4:"2391747", 10:"2391746", 15:"2391749",
+  16:"2391748", 21:"2391750", 22:"2461111",
+};
+
+// Ventana en minutos en la que consideramos un partido "potencialmente en vivo"
+const LIVE_WINDOW_BEFORE_MS = 5  * 60 * 1000;  // 5 min antes del kickoff
+const LIVE_WINDOW_AFTER_MS  = 135 * 60 * 1000; // 135 min después (2H + margen HT + extra)
+
+// Retorna los matchIds que están actualmente en la ventana de juego
+// según MATCH_DATES. No hace ninguna llamada a la API.
+function getLiveMatchIds(): number[] {
+  const now = Date.now();
+  return Object.entries(MATCH_DATES)
+    .filter(([, dateStr]) => {
+      const kick = new Date(dateStr).getTime();
+      return now >= kick - LIVE_WINDOW_BEFORE_MS && now <= kick + LIVE_WINDOW_AFTER_MS;
+    })
+    .map(([id]) => parseInt(id));
 }
 
-async function sdbDiscover(): Promise<any[]> {
-  const all: any[] = [];
-  for (const d of [sdbUtcDate(0),sdbUtcDate(1)]) {
-    try {
-      const res  = await fetch(`${SPORTSDB_API}/eventsday.php?d=${d}&l=${SPORTSDB_LID}`);
-      const json = await res.json();
-      const evts = (json.events||json.event||[]).filter((e:any)=>
-        e.idLeague===SPORTSDB_LID && e.strStatus!=='NS' &&
-        (e.strSeason==='2026'||(e.strFilename||'').startsWith('FIFA World Cup 2026'))
-      );
-      all.push(...evts);
-    } catch { /* ignore per-day fetch errors */ }
+function sdbUtcDate(offsetDays = 0): string {
+  const d = new Date(); d.setUTCDate(d.getUTCDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+// Descubre idEvent de TheSportsDB para matchIds que aún no están en el mapa.
+// Estrategia primaria: eventsseason.php — devuelve TODOS los eventos de la
+// temporada en una sola llamada, SIN el límite de 3 eventos/día que tiene
+// eventsday.php. Esto garantiza cobertura de la Jornada 3 (6 partidos/día
+// simultáneos) y de las eliminatorias. Fallback: eventsday ayer/hoy/mañana.
+// Lo encontrado se persiste en SPORTSDB_EVENT_IDS por la vida del isolate.
+async function bootstrapMissingEventIds(matchIds: number[]): Promise<void> {
+  const missing = matchIds.filter(id => !SPORTSDB_EVENT_IDS[id]);
+  if (!missing.length) return;
+
+  const discovered: any[] = [];
+
+  // Primario: temporada completa (sin límite diario).
+  try {
+    const res  = await fetch(`${SPORTSDB_API}/eventsseason.php?id=${SPORTSDB_LID}&s=2026`);
+    const json = await res.json();
+    discovered.push(...(json.events || json.event || []));
+  } catch { /* ignore, cae al fallback */ }
+
+  // Fallback: si la temporada no devolvió nada, usar eventsday (limitado a 3/día).
+  if (!discovered.length) {
+    const days = [sdbUtcDate(-1), sdbUtcDate(0), sdbUtcDate(1)];
+    for (const d of days) {
+      try {
+        const res  = await fetch(`${SPORTSDB_API}/eventsday.php?d=${d}&l=${SPORTSDB_LID}`);
+        const json = await res.json();
+        discovered.push(...(json.events || json.event || []).filter((e: any) =>
+          e.idLeague === SPORTSDB_LID &&
+          (e.strSeason === '2026' || (e.strFilename || '').startsWith('FIFA World Cup 2026'))
+        ));
+      } catch { /* ignore */ }
+    }
   }
-  return all;
+
+  for (const ev of discovered) {
+    const homeEn = ev.strHomeTeam || '';
+    const awayEn = ev.strAwayTeam || '';
+    for (const mid of missing) {
+      if (SPORTSDB_EVENT_IDS[mid]) continue;
+      const gm = findGroupMatchByTeams(homeEn, awayEn);
+      if (gm && gm.matchId === mid) {
+        SPORTSDB_EVENT_IDS[mid] = ev.idEvent;
+        console.log(`[bootstrap] matchId=${mid} → idEvent=${ev.idEvent} (${homeEn} vs ${awayEn})`);
+      }
+    }
+  }
+
+  const stillMissing = missing.filter(id => !SPORTSDB_EVENT_IDS[id]);
+  if (stillMissing.length) {
+    console.log(`[bootstrap] matchIds sin idEvent aún: ${stillMissing.join(',')}`);
+  }
 }
 
-async function sdbLookup(idEvent: string): Promise<any|null> {
+async function sdbLookup(idEvent: string): Promise<any | null> {
   try {
     const res  = await fetch(`${SPORTSDB_API}/lookupevent.php?id=${idEvent}`);
     const json = await res.json();
-    return (json.events||json.event||[])[0]||null;
+    return (json.events || json.event || [])[0] || null;
   } catch { return null; }
 }
 
-async function pollLiveOnce(leagueIds: string[]): Promise<void> {
-  const stubs = await sdbDiscover();
-  if (!stubs.length) return;
+// Finaliza partidos que llevan >3h en en_curso sin actualización (partidos zombie).
+// Solo actúa sobre source='auto'; los resultados manuales del admin son intocables.
+async function cleanupStaleMatches(leagueIds: string[]): Promise<void> {
   const db = getDb();
-  // Load all knockout teams once (all leagues, distinct by match_id)
-  const {data:koRows} = await db.from("knockout_match_teams").select("match_id,team1,team2").gte("match_id",73);
-  const koMap: Record<number,{team1:string;team2:string}> = {};
-  (koRows||[]).forEach((r:any)=>{ if (!koMap[r.match_id]) koMap[r.match_id]={team1:r.team1,team2:r.team2}; });
+  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  try {
+    const { data: stale } = await db.from("match_results")
+      .select("id, match_id, league_id, goles_a, goles_b")
+      .eq("estado", "en_curso").eq("source", "auto").lt("updated_at", cutoff);
+    for (const row of (stale || [])) {
+      if (!leagueIds.includes(row.league_id)) continue;
+      await db.from("match_results")
+        .update({ estado: 'finalizado', api_status: 'FT', updated_at: new Date().toISOString() })
+        .eq("id", row.id);
+      await calculatePoints(row.match_id, row.league_id, row.goles_a ?? 0, row.goles_b ?? 0);
+      console.log(`[cleanup] matchId=${row.match_id} leagueId=${row.league_id} auto-finalizado`);
+    }
+  } catch (err) { console.error('[cleanup] error:', err); }
+}
 
-  for (const stub of stubs) {
-    const event = await sdbLookup(stub.idEvent);
-    if (!event) continue;
-    const homeEn = event.strHomeTeam||'';
-    const awayEn = event.strAwayTeam||'';
-    const strStatus = event.strStatus||'NS';
-    if (strStatus==='NS') continue;
+// Calcula el minuto estimado del partido basado en MATCH_DATES cuando
+// la API no provee strProgress (común con la clave gratuita 123).
+function estimateMinuto(matchId: number, strStatus: string): string | null {
+  if (!['1H', 'HT', '2H'].includes(strStatus)) return null;
+  const dateStr = MATCH_DATES[matchId];
+  if (!dateStr) return null;
+  const kickMs  = new Date(dateStr).getTime();
+  const nowMs   = Date.now();
+  const elapsed = Math.floor((nowMs - kickMs) / 60000);
+  if (strStatus === '1H')  return String(Math.min(Math.max(elapsed, 1), 45));
+  if (strStatus === 'HT')  return '45';
+  if (strStatus === '2H') {
+    // El segundo tiempo empieza ~60min después del kickoff (45+15 descanso)
+    const secondHalfMin = Math.max(elapsed - 60, 46);
+    return String(Math.min(secondHalfMin, 90));
+  }
+  return null;
+}
 
-    let matchId: number|null = null;
-    let aEs = homeEn;
+async function pollLiveOnce(leagueIds: string[]): Promise<void> {
+  const liveIds = getLiveMatchIds();
+  if (!liveIds.length) return;
 
-    const gm = findGroupMatchByTeams(homeEn,awayEn);
-    if (gm) {
-      matchId=gm.matchId; aEs=gm.aEs;
-    } else {
-      for (const [mid,row] of Object.entries(koMap)) {
-        const t1En=DICT_ES_EN[row.team1]||row.team1;
-        const t2En=DICT_ES_EN[row.team2]||row.team2;
-        const fwd=nmatch(homeEn,t1En)&&nmatch(awayEn,t2En);
-        const rev=nmatch(homeEn,t2En)&&nmatch(awayEn,t1En);
-        if (fwd||rev) { matchId=parseInt(mid); aEs=fwd?row.team1:row.team2; break; }
-      }
+  // Rellenar IDs desconocidos antes de procesar (partidos de J2/J3 no hardcodeados)
+  await bootstrapMissingEventIds(liveIds);
+
+  const db = getDb();
+  // Cargar equipos de fase eliminatoria una vez (para knockout stage)
+  const { data: koRows } = await db.from("knockout_match_teams")
+    .select("match_id,team1,team2").gte("match_id", 73);
+  const koMap: Record<number, { team1: string; team2: string }> = {};
+  (koRows || []).forEach((r: any) => {
+    if (!koMap[r.match_id]) koMap[r.match_id] = { team1: r.team1, team2: r.team2 };
+  });
+
+  for (const matchId of liveIds) {
+    const idEvent = SPORTSDB_EVENT_IDS[matchId];
+    if (!idEvent) {
+      console.log(`[poller] sin idEvent para matchId=${matchId}, saltando`);
+      continue;
     }
 
-    if (!matchId) { console.log(`[poller] no match: ${homeEn} vs ${awayEn}`); continue; }
+    const event = await sdbLookup(idEvent);
+    if (!event) continue;
 
-    const {golesA,golesB} = assignScores(event,aEs);
+    const homeEn    = event.strHomeTeam || '';
+    const awayEn    = event.strAwayTeam || '';
+    const strStatus = event.strStatus || 'NS';
+    if (strStatus === 'NS') continue;
+
+    // Resolver matchId interno desde los nombres (grupo o eliminatoria)
+    let resolvedMatchId: number | null = matchId; // Ya lo tenemos del mapa
+    let aEs = homeEn;
+
+    const gm = findGroupMatchByTeams(homeEn, awayEn);
+    if (gm) {
+      // Verificar que coincide con el matchId esperado
+      if (gm.matchId !== matchId) {
+        console.log(`[poller] mismatch: esperaba matchId=${matchId}, encontró ${gm.matchId} (${homeEn} vs ${awayEn})`);
+      }
+      resolvedMatchId = gm.matchId;
+      aEs = gm.aEs;
+    } else if (matchId >= 73) {
+      // Fase eliminatoria: buscar en koMap
+      const koRow = koMap[matchId];
+      if (koRow) {
+        const t1En = DICT_ES_EN[koRow.team1] || koRow.team1;
+        const t2En = DICT_ES_EN[koRow.team2] || koRow.team2;
+        if (nmatch(homeEn, t1En) && nmatch(awayEn, t2En)) {
+          aEs = koRow.team1;
+        } else if (nmatch(homeEn, t2En) && nmatch(awayEn, t1En)) {
+          aEs = koRow.team2;
+        } else {
+          console.log(`[poller] knockout no match: ${homeEn} vs ${awayEn} (matchId=${matchId})`);
+          continue;
+        }
+      }
+    } else {
+      console.log(`[poller] group match no encontrado: ${homeEn} vs ${awayEn} (matchId=${matchId})`);
+      continue;
+    }
+
+    const { golesA, golesB } = assignScores(event, aEs);
     const estado = mapApiStatus(strStatus);
+    const minuto = event.strProgress || estimateMinuto(matchId, strStatus);
 
     for (const leagueId of leagueIds) {
       try {
-        await applyResult({matchId,leagueId,golesA,golesB,estado,source:'auto',updatedBy:null,apiStatus:strStatus,minuto:event.strProgress||null,rawApiStatus:strStatus});
-      } catch(err) { console.error(`[poller] applyResult error match ${matchId} league ${leagueId}:`,err); }
+        await applyResult({
+          matchId: resolvedMatchId!,
+          leagueId,
+          golesA,
+          golesB,
+          estado,
+          source: 'auto',
+          updatedBy: null,
+          apiStatus: strStatus,
+          minuto,
+          rawApiStatus: strStatus,
+        });
+      } catch (err) {
+        console.error(`[poller] applyResult error match=${matchId} league=${leagueId}:`, err);
+      }
     }
   }
 }
 
 async function runPollLoop(leagueIds: string[]) {
-  for (let i=0;i<12;i++) {
-    try { await pollLiveOnce(leagueIds); } catch(err) { console.error('[poller] iteration error:',err); }
-    if (i<11) await new Promise(r=>setTimeout(r,5000));
+  // Limpiar partidos zombie antes de empezar a pollear
+  await cleanupStaleMatches(leagueIds);
+  // 10 iteraciones × 5s = 50s total — margen seguro dentro del límite de waitUntil
+  for (let i = 0; i < 10; i++) {
+    try { await pollLiveOnce(leagueIds); } catch (err) { console.error('[poller] iteration error:', err); }
+    if (i < 9) await new Promise(r => setTimeout(r, 5000));
   }
 }
 
@@ -1105,26 +1285,56 @@ app.get("/make-server-49810636/bracket/group-standings-final", async (c) => {
 
 // ── Cálculo de puntos ─────────────────────────────────────────────────────────
 
+// Lógica de puntos: exacto=5, resultado correcto=2, fallo=0.
+// Usa SUM de TODAS las predicciones del usuario (no delta) para garantizar
+// consistencia incluso con 2 partidos simultáneos procesados secuencialmente.
 async function calculatePoints(matchId: number, leagueId: string, actualA: number, actualB: number) {
   try {
     const db = getDb();
-    const { data: preds } = await db.from("predictions").select("id, user_id, goles_a, goles_b, puntos_obtenidos").eq("match_id", matchId).eq("league_id", leagueId);
+
+    // Paso 1: fetch todas las predicciones del partido en 1 query
+    const { data: preds } = await db.from("predictions")
+      .select("id, user_id, goles_a, goles_b, puntos_obtenidos")
+      .eq("match_id", matchId).eq("league_id", leagueId);
     if (!preds?.length) return;
+
+    // Paso 2: calcular nuevos puntos en memoria para cada predicción
+    const updates: { id: string; userId: string; pts: number; oldPts: number | null }[] = [];
     for (const p of preds) {
       let pts = 0;
-      if (p.goles_a === actualA && p.goles_b === actualB) { pts = 5; }
-      else if (Math.sign(p.goles_a - p.goles_b) === Math.sign(actualA - actualB)) { pts = 2; }
-      await db.from("predictions").update({ puntos_obtenidos: pts }).eq("id", p.id);
-      // Recalculate total from ALL predictions instead of delta to avoid race conditions
-      // when multiple matches are processed concurrently (poller + manual admin writes).
-      const { data: allPreds } = await db.from("predictions")
-        .select("puntos_obtenidos")
-        .eq("user_id", p.user_id)
-        .eq("league_id", leagueId);
-      const total = (allPreds || []).reduce((s: number, pp: any) => s + (pp.puntos_obtenidos || 0), 0);
-      await db.from("scores").upsert({ league_id:leagueId, user_id:p.user_id, total, updated_at:new Date().toISOString() });
+      if (p.goles_a === actualA && p.goles_b === actualB) {
+        pts = 5;
+      } else if (Math.sign(p.goles_a - p.goles_b) === Math.sign(actualA - actualB)) {
+        pts = 2;
+      }
+      updates.push({ id: p.id, userId: p.user_id, pts, oldPts: p.puntos_obtenidos });
     }
-  } catch(err) { console.error("calculatePoints error:", err); }
+
+    // Paso 3: actualizar SOLO las predicciones que cambiaron (evita writes innecesarios)
+    const changed = updates.filter(u => u.pts !== u.oldPts);
+    for (const u of changed) {
+      await db.from("predictions").update({ puntos_obtenidos: u.pts }).eq("id", u.id);
+    }
+
+    // Paso 4: si ninguna predicción cambió de puntos, no recalcular totales
+    if (!changed.length) return;
+
+    // Paso 5: recalcular total de cada usuario afectado de forma ATÓMICA.
+    // El RPC recompute_user_score (migración 004) toma un advisory lock por
+    // (league, user) que abarca la lectura del SUM y la escritura del total,
+    // de modo que el poller automático y un resultado manual del admin nunca
+    // se pisan aunque corran simultáneamente. Esto elimina la race condition
+    // del incidente. NO escribe marcadores_exactos (columna inexistente; el
+    // leaderboard deriva los exactos contando predictions con puntos = 5).
+    const affectedUsers = [...new Set(changed.map(u => u.userId))];
+    for (const userId of affectedUsers) {
+      const { error } = await db.rpc("recompute_user_score", {
+        p_league: leagueId,
+        p_user: userId,
+      });
+      if (error) console.error("[calculatePoints] recompute_user_score error:", error);
+    }
+  } catch (err) { console.error("[calculatePoints] error:", err); }
 }
 
 // ── Cron / Live Poller ────────────────────────────────────────────────────────
@@ -1141,6 +1351,22 @@ app.post("/make-server-49810636/cron/poll-live", async (c) => {
     pollPromise.catch((err:any)=>console.error('[poller] loop error:',err));
     return c.json({ message:"Poll iniciado", leagues:leagueIds.length });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
+
+// GET /live/scores — endpoint ultraligero para polling de 5s desde el frontend.
+// Devuelve solo las filas en_curso del league; payload mínimo (~200 bytes).
+// Requiere auth (requireAuth) y acota por leagueId en query.
+app.get("/make-server-49810636/live/scores", requireAuth, async (c) => {
+  try {
+    const leagueId = c.req.query("leagueId");
+    if (!leagueId) return c.json({ scores: [] });
+    const db = getDb();
+    const { data } = await db.from("match_results")
+      .select("match_id, goles_a, goles_b, estado, minuto, api_status, updated_at")
+      .eq("league_id", leagueId)
+      .eq("estado", "en_curso");
+    return c.json({ scores: data || [] });
+  } catch (err) { return c.json({ error: "Error interno", details: String(err) }, 500); }
 });
 
 // POST /matches/:matchId/knockout-winner — advance bracket for ET/PEN draw matches

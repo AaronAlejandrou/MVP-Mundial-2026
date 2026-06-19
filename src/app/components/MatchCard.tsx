@@ -377,16 +377,22 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
           </div>
         )}
 
-        {/* Resultado — depende del estado real (no del corte de 120 min), solo cambia el label */}
-        {match.goles_a !== null && match.goles_b !== null && (match.estado === 'finalizado' || match.estado === 'en_curso' || isLive) && (
+        {/* Resultado — aparece siempre que el partido esté en_curso o finalizado,
+            incluso si los goles son null (muestra 0-0 conectando al inicio del partido) */}
+        {(match.estado === 'finalizado' || match.estado === 'en_curso' || isLive) && (
           <div className="px-3 sm:px-5 pb-3 sm:pb-5 space-y-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-foreground/5 border border-border">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                  {getPhaseLabel(match.api_status, match.minuto, isLive, match.estado)}
+                  {match.goles_a === null && (match.estado === 'en_curso' || isLive)
+                    ? 'En vivo'
+                    : getPhaseLabel(match.api_status, match.minuto, isLive, match.estado)}
                 </span>
                 <span className="font-score text-xl font-bold text-foreground">
-                  {match.goles_a} – {match.goles_b}
+                  {match.goles_a !== null && match.goles_b !== null
+                    ? `${match.goles_a} – ${match.goles_b}`
+                    : <span className="text-sm text-muted-foreground animate-pulse">0 – 0</span>
+                  }
                 </span>
               </div>
               {prediction && (
@@ -449,8 +455,8 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
           </div>
         )}
 
-        {/* Partido bloqueado — solo cuando no hay resultado (en vivo o post-120min) que mostrar */}
-        {isLocked && match.estado !== 'finalizado' && !((isLive || match.estado === 'en_curso') && match.goles_a !== null && match.goles_b !== null) && (
+        {/* Partido bloqueado — solo cuando no está en_curso/finalizado (en esos ya se muestra resultado) */}
+        {isLocked && match.estado !== 'finalizado' && match.estado !== 'en_curso' && !isLive && (
           <div className="px-3 sm:px-5 pb-3 sm:pb-5">
             <div className={`flex items-center gap-2 rounded-lg border-2 border-destructive/40 overflow-hidden ${canShowModal ? '' : ''}`}>
               <div className="flex items-center justify-center gap-2 py-2 sm:py-3 px-3 sm:px-4 flex-1 bg-destructive/5 text-destructive">

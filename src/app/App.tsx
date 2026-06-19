@@ -43,6 +43,11 @@ export default function App() {
 
   // Snapshot de los partidos enriquecidos, leído por el intervalo de auto-refresco
   const liveMatchesRef = useRef<any[]>([]);
+  // Flag para el ciclo rápido: true cuando hay al menos un partido en_curso
+  const anyLiveRef = useRef(false);
+  // Flag para el heartbeat: true cuando algún partido está dentro de su ventana
+  // horaria de juego, aunque el backend aún no lo haya marcado en_curso.
+  const anyInWindowRef = useRef(false);
 
   // ── Init ────────────────────────────────────────────────────────────────
 
@@ -221,18 +226,63 @@ export default function App() {
     await loadLeaderboard();
   }, [currentLeague?.id, accessToken, loadLeaderboard]);
 
-  // Auto-refresco: mientras haya un partido en su ventana en vivo, refresca cada 30s.
-  // No hay realtime; esto mantiene marcador y ranking al día sin recargar manualmente.
-  // Solo corre con la pestaña visible y solo dispara red si hay algo en vivo.
+  // Ciclo rápido (5s): refresca SOLO los marcadores de partidos en_curso.
+  // Payload ultraligero (~200 bytes). No toca predicciones ni leaderboard.
+  // El ciclo completo de 30s se encarga del sync total.
+  const fetchLiveScores = useCallback(async () => {
+    if (!currentLeague || !accessToken) return;
+    try {
+      const res = await apiFetch(`/live/scores?leagueId=${currentLeague.id}`, { token: accessToken });
+      if (!res.ok) return;
+      const { scores } = await res.json();
+      if (!scores?.length) return;
+      setMatchResults(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const s of scores) {
+          const mid = s.match_id;
+          const existing = prev[mid];
+          if (!existing
+            || existing.golesA !== s.goles_a
+            || existing.golesB !== s.goles_b
+            || existing.estado !== s.estado
+            || existing.minuto !== s.minuto) {
+            next[mid] = {
+              ...existing,
+              golesA: s.goles_a,
+              golesB: s.goles_b,
+              estado: s.estado,
+              minuto: s.minuto,
+              apiStatus: s.api_status,
+            };
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    } catch { /* silent */ }
+  }, [currentLeague?.id, accessToken]);
+
+  // Ciclo rápido: 5s — solo marcadores en vivo
   useEffect(() => {
     const id = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
-      const now = Date.now();
-      const anyLive = liveMatchesRef.current.some((m: any) => {
-        const start = new Date(m.fecha_hora).getTime();
-        return m.estado === 'en_curso' || (now >= start && now < start + 120 * 60 * 1000 && m.estado !== 'finalizado');
-      });
-      if (anyLive) refreshLiveData();
+      if (!anyLiveRef.current) return;
+      fetchLiveScores();
+    }, 5000);
+    return () => clearInterval(id);
+  }, [fetchLiveScores]);
+
+  // Ciclo completo: 30s — sync total (marcadores + predicciones + leaderboard)
+  // Solo corre con la pestaña visible. Dispara red si hay algo en vivo O si
+  // algún partido está dentro de su ventana horaria (heartbeat de kickoff): así
+  // detecta el inicio del partido aunque el tab se haya abierto antes de que el
+  // backend lo marque en_curso. Cuando flipea a en_curso, arranca el ciclo de 5s.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (!anyLiveRef.current && !anyInWindowRef.current) return;
+      refreshLiveData();
     }, 30000);
     return () => clearInterval(id);
   }, [refreshLiveData]);
@@ -362,6 +412,20 @@ export default function App() {
     minuto: matchResults[m.id]?.minuto ?? null,
   }));
   liveMatchesRef.current = enrichedMatches;
+  // Actualizar flag para ciclos de polling — activa solo cuando hay algo en vivo
+  anyLiveRef.current = enrichedMatches.some(m => m.estado === 'en_curso');
+  // Flag de "ventana de juego": true si algún partido está dentro de su horario
+  // estimado [kickoff-5min, kickoff+135min] aunque aún no esté en_curso. Permite
+  // que el heartbeat detecte el kickoff en arranque en frío (tab abierto antes
+  // de que el backend marque el partido en_curso).
+  {
+    const now = Date.now();
+    anyInWindowRef.current = enrichedMatches.some(m => {
+      if (m.estado === 'finalizado') return false;
+      const kick = new Date(m.fecha_hora).getTime();
+      return now >= kick - 5 * 60 * 1000 && now <= kick + 135 * 60 * 1000;
+    });
+  }
 
   // ── Render ───────────────────────────────────────────────────────────────
 
