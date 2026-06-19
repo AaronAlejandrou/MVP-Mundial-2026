@@ -30,6 +30,7 @@ export default function App() {
 
   const [currentView, setCurrentView] = useState<'matches'|'leaderboard'|'leagues'|'knockout'|'standings'>('matches');
   const [predictions, setPredictions]   = useState<Record<number, any>>({});
+  const [predictionsLoaded, setPredictionsLoaded] = useState(false);
   const [matchResults, setMatchResults] = useState<Record<number, any>>({});
   const [leaderboard, setLeaderboard]   = useState<any[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
@@ -119,6 +120,7 @@ export default function App() {
 
   const loadUserData = useCallback(async () => {
     if (!currentLeague || !accessToken) return;
+    setPredictionsLoaded(false);
 
     try {
       const res = await apiFetch(`/predictions/${currentLeague.id}`, { token: accessToken });
@@ -143,6 +145,10 @@ export default function App() {
         setMatchResults(data.results || {});
       }
     } catch { /* silent */ }
+
+    // Trigger scroll only after BOTH predictions AND match results are loaded
+    // so CLS from result cards expanding doesn't push the scroll target off-screen
+    setPredictionsLoaded(true);
 
     try {
       const pr = await apiFetch(`/bracket/phase?leagueId=${currentLeague.id}`);
@@ -495,6 +501,7 @@ export default function App() {
             leagueId={currentLeague?.id}
             accessToken={accessToken}
             currentUserId={currentUser?.id}
+            predictionsLoaded={predictionsLoaded}
           />
         )}
         {currentView === 'knockout' && (

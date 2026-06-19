@@ -400,7 +400,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
             </div>
 
             {(prediction?.puntos_obtenidos !== undefined || canShowModal) && (
-              <div className="flex gap-2 items-stretch">
+              <div className="flex gap-2 items-stretch min-h-[88px]">
                 {/* Points box — takes remaining width */}
                 {prediction?.puntos_obtenidos !== undefined && (
                   <div className={`flex-1 flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all shadow-sm ${

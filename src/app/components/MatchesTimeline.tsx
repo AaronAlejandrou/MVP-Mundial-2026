@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { format, startOfDay, isSameDay, isToday, isFuture } from 'date-fns';
+import { format, startOfDay, isSameDay, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar, Trophy } from 'lucide-react';
 import { MatchCard } from './MatchCard';
@@ -33,9 +33,10 @@ interface MatchesTimelineProps {
   leagueId?: string;
   accessToken?: string;
   currentUserId?: string;
+  predictionsLoaded?: boolean;
 }
 
-export function MatchesTimeline({ matches, predictions, onSavePrediction, onViewGroup, onViewTeam, leagueId, accessToken, currentUserId }: MatchesTimelineProps) {
+export function MatchesTimeline({ matches, predictions, onSavePrediction, onViewGroup, onViewTeam, leagueId, accessToken, currentUserId, predictionsLoaded }: MatchesTimelineProps) {
   const todayRef = useRef<HTMLDivElement>(null);
 
   // Agrupar partidos por fecha
@@ -51,12 +52,16 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
   // Ordenar fechas
   const sortedDates = Object.keys(groupedMatches).sort();
 
-  // Auto-scroll a la fecha actual o próxima
+  // Auto-scroll a la fecha actual o próxima — espera a que las predicciones estén
+  // cargadas para que el layout sea estable antes de calcular la posición de scroll.
+  const hasScrolled = useRef(false);
   useEffect(() => {
+    if (!predictionsLoaded || hasScrolled.current) return;
     if (todayRef.current) {
       todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      hasScrolled.current = true;
     }
-  }, []);
+  }, [predictionsLoaded]);
 
   const getDateLabel = (dateString: string) => {
     // Apend T12:00:00 to force local time interpretation and prevent UTC midnight backwards shifting
@@ -95,11 +100,9 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
     };
   };
 
-  // Encontrar la primera fecha actual o futura
-  const currentDateIndex = sortedDates.findIndex(dateString => {
-    const date = new Date(`${dateString}T12:00:00`);
-    return isToday(date) || isFuture(date);
-  });
+  // Encontrar la primera fecha actual o futura comparando strings ISO directamente
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const currentDateIndex = sortedDates.findIndex(ds => ds >= todayStr);
 
   return (
     <div className="space-y-8">

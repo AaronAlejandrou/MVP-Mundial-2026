@@ -743,8 +743,7 @@ app.get("/make-server-49810636/match-predictions/all", requireAuth, async (c) =>
 });
 
 // GET /match-predictions/ranking-snapshot?matchId=&leagueId=
-// Ranking acumulado al momento en que ESTE partido se finalizó (corte por updated_at),
-// con el delta de posición respecto a antes de este partido (quién subió/bajó por él).
+// Ranking acumulado exactamente hasta este partido, con el delta de quién subió/bajó por él.
 app.get("/make-server-49810636/match-predictions/ranking-snapshot", requireAuth, async (c) => {
   try {
     const matchId = Number(c.req.query("matchId"));
@@ -752,47 +751,75 @@ app.get("/make-server-49810636/match-predictions/ranking-snapshot", requireAuth,
     if (!matchId || !leagueId) return c.json({ error: "Parámetros requeridos" }, 400);
     const db = getDb();
 
-    // Liga (para excluir al admin, igual que la tabla general)
     const { data: league } = await db.from("leagues").select("admin_id").eq("id", leagueId).maybeSingle();
     if (!league) return c.json({ error: "Liga no encontrada" }, 404);
 
-    // Resultado del partido objetivo → define el corte temporal
     const { data: target } = await db.from("match_results")
-      .select("updated_at, estado")
+      .select("estado")
       .eq("match_id", matchId).eq("league_id", leagueId).maybeSingle();
     if (!target) return c.json({ snapshot: [], hasData: false });
 
-    const cutoff = target.updated_at;
+    const targetScheduled = MATCH_DATES[matchId];
+    if (!targetScheduled) return c.json({ snapshot: [], hasData: false });
+    const targetDate = new Date(targetScheduled);
 
-    // Partidos finalizados hasta el corte (por momento de finalización)
-    const { data: finals } = await db.from("match_results")
+    // Partidos finalizados de la liga (máx 104 filas, sin riesgo de límite)
+    const { data: allFinals } = await db.from("match_results")
       .select("match_id")
       .eq("league_id", leagueId)
-      .eq("estado", "finalizado")
-      .lte("updated_at", cutoff);
-    const afterIds = new Set<number>((finals || []).map((r: any) => r.match_id));
-    afterIds.add(matchId); // incluir el objetivo aunque esté en_curso (puntos provisionales)
-    const afterIdArr = Array.from(afterIds);
+      .eq("estado", "finalizado");
 
-    // Predicciones de todos en esos partidos + miembros (para poblar incluso a los de 0 pts)
-    const [{ data: preds }, { data: members }] = await Promise.all([
-      db.from("predictions").select("user_id, match_id, puntos_obtenidos").eq("league_id", leagueId).in("match_id", afterIdArr),
-      db.from("scores").select("user_id, users(nombre)").eq("league_id", leagueId),
-    ]);
+    // IDs en scope = finalizados con fecha programada ≤ partido objetivo
+    const inScopeSet = new Set<number>(
+      (allFinals || [])
+        .map((r: any) => r.match_id as number)
+        .filter(mid => {
+          const d = MATCH_DATES[mid];
+          return d && new Date(d) <= targetDate;
+        })
+    );
+    inScopeSet.add(matchId); // siempre incluir el objetivo (live o finalizado)
+    const otherScopeIds = Array.from(inScopeSet).filter(mid => mid !== matchId);
+
+    // Una query por partido en scope — cada una retorna ≤ miembros filas (sin riesgo de límite).
+    // Todas corren en paralelo. Evita el límite de 1000 filas de PostgREST en una sola query.
+    const queries: Promise<any>[] = [
+      db.from("scores").select("user_id, users(nombre)").eq("league_id", leagueId) as any,
+      db.from("predictions").select("user_id, puntos_obtenidos")
+        .eq("league_id", leagueId).eq("match_id", matchId) as any,
+      ...otherScopeIds.map(mid =>
+        db.from("predictions").select("user_id, puntos_obtenidos")
+          .eq("league_id", leagueId).eq("match_id", mid) as any
+      ),
+    ];
+    const allResults = await Promise.all(queries);
+    const membersData = (allResults[0] as any).data || [];
+    const thisMatchData = (allResults[1] as any).data || [];
+    const otherMatchData = allResults.slice(2).flatMap((r: any) => r.data || []);
 
     type Agg = { nombre: string; totalAfter: number; exactosAfter: number; ptsMatch: number; exactMatch: number };
     const agg: Record<string, Agg> = {};
-    for (const m of (members || [])) {
+    for (const m of membersData) {
       if ((m as any).user_id === league.admin_id) continue;
       agg[(m as any).user_id] = { nombre: (m as any).users?.nombre || "Usuario", totalAfter: 0, exactosAfter: 0, ptsMatch: 0, exactMatch: 0 };
     }
-    for (const p of (preds || [])) {
+
+    // Acumular este partido primero (para rastrear ptsMatch por separado)
+    for (const p of thisMatchData) {
       const a = agg[(p as any).user_id];
-      if (!a) continue; // admin u otros fuera de scores
+      if (!a) continue;
+      const pts = (p as any).puntos_obtenidos ?? 0;
+      a.totalAfter += pts;
+      a.ptsMatch = pts;
+      if (pts === 5) { a.exactosAfter += 1; a.exactMatch = 1; }
+    }
+    // Acumular el resto de partidos en scope
+    for (const p of otherMatchData) {
+      const a = agg[(p as any).user_id];
+      if (!a) continue;
       const pts = (p as any).puntos_obtenidos ?? 0;
       a.totalAfter += pts;
       if (pts === 5) a.exactosAfter += 1;
-      if ((p as any).match_id === matchId) { a.ptsMatch = pts; if (pts === 5) a.exactMatch = 1; }
     }
 
     const rows = Object.entries(agg).map(([userId, a]) => ({
@@ -803,7 +830,6 @@ app.get("/make-server-49810636/match-predictions/ranking-snapshot", requireAuth,
       puntosEstePartido: a.ptsMatch,
     }));
 
-    // Mismo desempate que el ranking general: total, luego marcadores exactos
     const after = [...rows].sort((x, y) => y.total - x.total || y.exactos - x.exactos);
     const posAfter: Record<string, number> = {};
     after.forEach((r, i) => { posAfter[r.userId] = i + 1; });
@@ -1088,10 +1114,15 @@ async function calculatePoints(matchId: number, leagueId: string, actualA: numbe
       let pts = 0;
       if (p.goles_a === actualA && p.goles_b === actualB) { pts = 5; }
       else if (Math.sign(p.goles_a - p.goles_b) === Math.sign(actualA - actualB)) { pts = 2; }
-      const oldPts = p.puntos_obtenidos ?? 0;
       await db.from("predictions").update({ puntos_obtenidos: pts }).eq("id", p.id);
-      const { data: score } = await db.from("scores").select("total").eq("league_id", leagueId).eq("user_id", p.user_id).maybeSingle();
-      await db.from("scores").upsert({ league_id:leagueId, user_id:p.user_id, total:(score?.total||0) - oldPts + pts, updated_at:new Date().toISOString() });
+      // Recalculate total from ALL predictions instead of delta to avoid race conditions
+      // when multiple matches are processed concurrently (poller + manual admin writes).
+      const { data: allPreds } = await db.from("predictions")
+        .select("puntos_obtenidos")
+        .eq("user_id", p.user_id)
+        .eq("league_id", leagueId);
+      const total = (allPreds || []).reduce((s: number, pp: any) => s + (pp.puntos_obtenidos || 0), 0);
+      await db.from("scores").upsert({ league_id:leagueId, user_id:p.user_id, total, updated_at:new Date().toISOString() });
     }
   } catch(err) { console.error("calculatePoints error:", err); }
 }
