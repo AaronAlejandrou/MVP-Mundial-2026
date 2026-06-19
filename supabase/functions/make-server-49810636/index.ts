@@ -333,9 +333,9 @@ app.get("/make-server-49810636/matches/results", async (c) => {
   try {
     const leagueId = c.req.query("leagueId");
     if (!leagueId) return c.json({ error: "leagueId requerido" }, 400);
-    const { data: results } = await getDb().from("match_results").select("match_id, goles_a, goles_b, estado, api_status, minuto, updated_at").eq("league_id", leagueId);
+    const { data: results } = await getDb().from("match_results").select("match_id, goles_a, goles_b, estado, api_status, minuto, updated_at, segundo_tiempo_inicio").eq("league_id", leagueId);
     const map: Record<number, any> = {};
-    (results || []).forEach((r: any) => { map[r.match_id] = { matchId:r.match_id, golesA:r.goles_a, golesB:r.goles_b, estado:r.estado, apiStatus:r.api_status, minuto:r.minuto, updatedAt:r.updated_at }; });
+    (results || []).forEach((r: any) => { map[r.match_id] = { matchId:r.match_id, golesA:r.goles_a, golesB:r.goles_b, estado:r.estado, apiStatus:r.api_status, minuto:r.minuto, updatedAt:r.updated_at, segundoTiempoInicio:r.segundo_tiempo_inicio }; });
     return c.json({ results: map });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
@@ -489,7 +489,7 @@ interface ApplyResultParams {
 async function applyResult(p: ApplyResultParams) {
   const db = getDb();
   const { data: ex } = await db.from("match_results")
-    .select("id,source,estado,goles_a,goles_b")
+    .select("id,source,estado,goles_a,goles_b,api_status,segundo_tiempo_inicio")
     .eq("match_id", p.matchId).eq("league_id", p.leagueId).maybeSingle();
 
   // Guard 1: resultado manual del admin siempre prevalece sobre auto
@@ -506,13 +506,21 @@ async function applyResult(p: ApplyResultParams) {
     golesB = ex.goles_b ?? 0;
   }
 
-  // Early exit: si score, estado y minuto no cambiaron no hay nada que persistir
-  // (cubre el 95% de los ticks sin cambio de score → 0 writes, 0 calculatePoints)
+  // Early exit: si score, estado, source Y fase (api_status) no cambiaron, no hay
+  // nada que persistir (cubre el 95% de los ticks sin cambios → 0 writes).
+  // IMPORTANTE: api_status debe estar aquí para que las transiciones de fase
+  // (1H→HT→2H→FT) se guarden aunque el marcador no cambie; si no, el reloj del
+  // cliente se queda pegado en "primer tiempo" para siempre.
   if (ex
-    && ex.goles_a   === golesA
-    && ex.goles_b   === golesB
-    && ex.estado    === p.estado
-    && ex.source    === p.source) return;
+    && ex.goles_a    === golesA
+    && ex.goles_b    === golesB
+    && ex.estado     === p.estado
+    && ex.source     === p.source
+    && ex.api_status === p.apiStatus) return;
+
+  // ¿Cambió realmente el marcador? Si solo cambió la fase (HT/2H) con el mismo
+  // score, persistimos la fila pero evitamos recalcular puntos innecesariamente.
+  const scoreChanged = !ex || ex.goles_a !== golesA || ex.goles_b !== golesB;
 
   const now = new Date().toISOString();
   const row: any = {
@@ -520,6 +528,10 @@ async function applyResult(p: ApplyResultParams) {
     source: p.source, api_status: p.apiStatus, minuto: p.minuto, updated_at: now,
   };
   if (p.updatedBy) row.updated_by = p.updatedBy;
+  // Ancla del 2T: la primera vez que detectamos '2H' guardamos el instante real
+  // de inicio del segundo tiempo. No se sobrescribe (un gol en el 2T no lo mueve),
+  // así el cliente calcula el minuto exacto: 46 + (ahora − segundo_tiempo_inicio).
+  if (p.apiStatus === '2H' && !ex?.segundo_tiempo_inicio) row.segundo_tiempo_inicio = now;
 
   let writeErr: any = null;
   if (ex) {
@@ -531,7 +543,11 @@ async function applyResult(p: ApplyResultParams) {
   }
   if (writeErr) throw new Error(writeErr.message || "Error guardando resultado");
 
-  await calculatePoints(p.matchId, p.leagueId, golesA, golesB);
+  // Solo recalcular puntos si cambió el marcador o si el partido finaliza.
+  // Una transición de fase pura (p. ej. 1H→HT con el mismo score) no toca puntos.
+  if (scoreChanged || p.estado === 'finalizado') {
+    await calculatePoints(p.matchId, p.leagueId, golesA, golesB);
+  }
 
   if (p.estado === 'finalizado' && p.matchId >= 73) {
     await advanceBracket(p.matchId, p.leagueId, golesA, golesB, db);
@@ -1362,7 +1378,7 @@ app.get("/make-server-49810636/live/scores", requireAuth, async (c) => {
     if (!leagueId) return c.json({ scores: [] });
     const db = getDb();
     const { data } = await db.from("match_results")
-      .select("match_id, goles_a, goles_b, estado, minuto, api_status, updated_at")
+      .select("match_id, goles_a, goles_b, estado, minuto, api_status, updated_at, segundo_tiempo_inicio")
       .eq("league_id", leagueId)
       .eq("estado", "en_curso");
     return c.json({ scores: data || [] });

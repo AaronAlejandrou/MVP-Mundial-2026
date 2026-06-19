@@ -19,14 +19,57 @@ interface Match {
   estado?: 'pendiente' | 'en_curso' | 'finalizado';
   api_status?: string | null;
   minuto?: string | null;
+  segundo_tiempo_inicio?: string | null;
+}
+
+// Calcula el minuto de juego en vivo. Es 100% client-side y usa instantes
+// absolutos (Date.now() y fechas con offset explícito), por lo que da el MISMO
+// resultado en cualquier zona horaria — no depende de la hora de pared del usuario.
+//
+// 2T EXACTO: si tenemos el ancla `segundoTiempoInicio` (instante real en que el
+// poller detectó el paso a 2H), el minuto se cuenta desde ahí (46 + transcurrido),
+// inmune a descansos largos, arranques tardíos y añadido del 1T. Si no está
+// disponible, cae a una estimación desde el kickoff (asume 15' de descanso).
+// Maneja el tiempo añadido del 1T (45+X) y del 2T (90+X).
+function computeLiveMinute(
+  fechaHora: string,
+  apiStatus: string | null | undefined,
+  segundoTiempoInicio?: string | null,
+): string | null {
+  if (apiStatus !== '1H' && apiStatus !== '2H') return null;
+  const kickMs = new Date(fechaHora).getTime();
+  if (Number.isNaN(kickMs)) return null;
+  const elapsed = Math.floor((Date.now() - kickMs) / 60000);
+  if (elapsed < 0) return null;
+
+  if (apiStatus === '1H') {
+    if (elapsed <= 45) return String(Math.max(elapsed, 1));
+    // Tiempo añadido del primer tiempo (cap a +15 por si la API tarda en pasar a HT)
+    return `45+${Math.min(elapsed - 45, 15)}`;
+  }
+
+  // 2T — preferimos el ancla real del inicio del segundo tiempo.
+  if (segundoTiempoInicio) {
+    const startMs = new Date(segundoTiempoInicio).getTime();
+    if (!Number.isNaN(startMs)) {
+      const m = 46 + Math.floor((Date.now() - startMs) / 60000);
+      if (m <= 90) return String(Math.max(m, 46));
+      return `90+${Math.min(m - 90, 20)}`;
+    }
+  }
+  // Fallback: estimación desde el kickoff (asume 15' de descanso).
+  const play = elapsed - 15;
+  if (play < 46) return '46';
+  if (play <= 90) return String(play);
+  return `90+${Math.min(play - 90, 20)}`;
 }
 
 function getPhaseLabel(apiStatus: string | null | undefined, minuto: string | null | undefined, isLive: boolean, estado: string | undefined): React.ReactNode {
   if (estado === 'finalizado') return 'Resultado final';
   if (!apiStatus) return isLive ? <>Resultado <span className="text-rose-500">en vivo</span></> : 'Resultado';
   if (apiStatus === 'HT') return '⏸ Medio tiempo';
-  if (apiStatus === '1H') return <>Primer tiempo{minuto ? <> · <span className="text-rose-500">{minuto}'</span></> : null}</>;
-  if (apiStatus === '2H') return <>Segundo tiempo{minuto ? <> · <span className="text-rose-500">{minuto}'</span></> : null}</>;
+  if (apiStatus === '1H') return <>Primer tiempo{minuto ? <> · <span className="text-rose-500 animate-pulse">{minuto}'</span></> : null}</>;
+  if (apiStatus === '2H') return <>Segundo tiempo{minuto ? <> · <span className="text-rose-500 animate-pulse">{minuto}'</span></> : null}</>;
   if (['FT','ET','AET','BT','P','PEN'].includes(apiStatus)) return 'Resultado final';
   return isLive ? <>Resultado <span className="text-rose-500">en vivo</span></> : 'Resultado';
 }
@@ -93,6 +136,15 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
   useEffect(() => {
     if (match.estado !== 'pendiente') return;
     const id = setInterval(() => setTick(t => t + 1), 1_000);
+    return () => clearInterval(id);
+  }, [match.estado]);
+
+  // Ticker del minuto en vivo: re-render cada 15s mientras el partido está en
+  // curso, para que el reloj calculado client-side (computeLiveMinute) avance solo
+  // aunque el marcador no cambie. Se detiene al finalizar.
+  useEffect(() => {
+    if (match.estado !== 'en_curso') return;
+    const id = setInterval(() => setTick(t => t + 1), 15_000);
     return () => clearInterval(id);
   }, [match.estado]);
 
@@ -386,7 +438,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
                   {match.goles_a === null && (match.estado === 'en_curso' || isLive)
                     ? 'En vivo'
-                    : getPhaseLabel(match.api_status, match.minuto, isLive, match.estado)}
+                    : getPhaseLabel(match.api_status, computeLiveMinute(match.fecha_hora, match.api_status, match.segundo_tiempo_inicio), isLive, match.estado)}
                 </span>
                 <span className="font-score text-xl font-bold text-foreground">
                   {match.goles_a !== null && match.goles_b !== null

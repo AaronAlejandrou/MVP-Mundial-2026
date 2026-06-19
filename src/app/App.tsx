@@ -246,7 +246,8 @@ export default function App() {
             || existing.golesA !== s.goles_a
             || existing.golesB !== s.goles_b
             || existing.estado !== s.estado
-            || existing.minuto !== s.minuto) {
+            || existing.minuto !== s.minuto
+            || existing.segundoTiempoInicio !== s.segundo_tiempo_inicio) {
             next[mid] = {
               ...existing,
               golesA: s.goles_a,
@@ -254,6 +255,7 @@ export default function App() {
               estado: s.estado,
               minuto: s.minuto,
               apiStatus: s.api_status,
+              segundoTiempoInicio: s.segundo_tiempo_inicio,
             };
             changed = true;
           }
@@ -410,6 +412,7 @@ export default function App() {
     estado: (matchResults[m.id]?.estado ?? m.estado ?? 'pendiente') as 'pendiente'|'en_curso'|'finalizado',
     api_status: matchResults[m.id]?.apiStatus ?? null,
     minuto: matchResults[m.id]?.minuto ?? null,
+    segundo_tiempo_inicio: matchResults[m.id]?.segundoTiempoInicio ?? null,
   }));
   liveMatchesRef.current = enrichedMatches;
   // Actualizar flag para ciclos de polling — activa solo cuando hay algo en vivo
