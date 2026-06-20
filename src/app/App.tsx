@@ -235,7 +235,12 @@ export default function App() {
       const res = await apiFetch(`/live/scores?leagueId=${currentLeague.id}`, { token: accessToken });
       if (!res.ok) return;
       const { scores } = await res.json();
-      if (!scores?.length) return;
+      // Si no hay partidos en vivo pero anyLiveRef dice que había uno,
+      // acaba de finalizar → sync completo para capturar estado='finalizado'.
+      if (!scores?.length) {
+        if (anyLiveRef.current) refreshLiveData();
+        return;
+      }
       setMatchResults(prev => {
         const next = { ...prev };
         let changed = false;
@@ -263,7 +268,7 @@ export default function App() {
         return changed ? next : prev;
       });
     } catch { /* silent */ }
-  }, [currentLeague?.id, accessToken]);
+  }, [currentLeague?.id, accessToken, refreshLiveData]);
 
   // Ciclo rápido: 5s — solo marcadores en vivo
   useEffect(() => {

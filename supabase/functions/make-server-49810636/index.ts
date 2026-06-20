@@ -699,7 +699,20 @@ function estimateMinuto(matchId: number, strStatus: string): string | null {
 }
 
 async function pollLiveOnce(leagueIds: string[]): Promise<void> {
-  const liveIds = getLiveMatchIds();
+  const windowIds = getLiveMatchIds();
+
+  // También incluir cualquier partido que la DB tenga como en_curso (source=auto)
+  // pero que ya salió de la ventana horaria. Esto evita que un partido quede zombi
+  // si el 2T con añadido supera los 135 min del kickoff: seguimos llamando a la API
+  // hasta que nos devuelva FT, sin importar cuánto tiempo haya pasado.
+  const db = getDb();
+  const { data: activeRows } = await db.from("match_results")
+    .select("match_id")
+    .eq("estado", "en_curso")
+    .eq("source", "auto");
+  const dbActiveIds = (activeRows || []).map((r: any) => r.match_id as number);
+
+  const liveIds = [...new Set([...windowIds, ...dbActiveIds])];
   if (!liveIds.length) return;
 
   // Rellenar IDs desconocidos antes de procesar (partidos de J2/J3 no hardcodeados)

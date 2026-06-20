@@ -67,7 +67,7 @@ function computeLiveMinute(
 function getPhaseLabel(apiStatus: string | null | undefined, minuto: string | null | undefined, isLive: boolean, estado: string | undefined): React.ReactNode {
   if (estado === 'finalizado') return 'Resultado final';
   if (!apiStatus) return isLive ? <>Resultado <span className="text-rose-500">en vivo</span></> : 'Resultado';
-  if (apiStatus === 'HT') return '⏸ Medio tiempo';
+  if (apiStatus === 'HT') return 'Medio tiempo';
   if (apiStatus === '1H') return <>Primer tiempo{minuto ? <> · <span className="text-rose-500 animate-pulse">{minuto}'</span></> : null}</>;
   if (apiStatus === '2H') return <>Segundo tiempo{minuto ? <> · <span className="text-rose-500 animate-pulse">{minuto}'</span></> : null}</>;
   if (['FT','ET','AET','BT','P','PEN'].includes(apiStatus)) return 'Resultado final';
