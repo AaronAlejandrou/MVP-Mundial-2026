@@ -12,7 +12,38 @@ interface PlayerPrediction {
   goles_a: number;
   goles_b: number;
   puntos_obtenidos: number | null;
+  predictedAt: string | null;
   resultado: { goles_a: number; goles_b: number; estado: string } | null;
+}
+
+// Muestra cuándo se envió el pronóstico y cuánto antes del partido fue.
+// Si se registró después del kickoff (inyección manual), omite el "antes del
+// partido" — la ausencia es el indicador sutil sin alarmar al resto.
+function formatPredictionMeta(predictedAt: string, kickoff: string): string {
+  const predMs = new Date(predictedAt).getTime();
+  const kickMs = new Date(kickoff).getTime();
+  if (Number.isNaN(predMs) || Number.isNaN(kickMs)) return '';
+
+  const timeStr = format(new Date(predictedAt), "d MMM · HH:mm", { locale: es });
+  const diffMin = Math.floor((kickMs - predMs) / 60000);
+
+  if (diffMin <= 0) return timeStr; // durante o después del partido — solo la hora
+
+  if (diffMin < 60) return `${timeStr} · ${diffMin} min antes del comienzo del partido`;
+
+  const totalH = Math.floor(diffMin / 60);
+  const m = diffMin % 60;
+
+  if (totalH < 24) {
+    const rel = m === 0 ? `${totalH}h` : `${totalH}h ${m}min`;
+    return `${timeStr} · ${rel} antes del comienzo del partido`;
+  }
+
+  const days = Math.floor(totalH / 24);
+  const h = totalH % 24;
+  const dayLabel = days === 1 ? '1 día' : `${days} días`;
+  const rel = h === 0 ? dayLabel : `${dayLabel} ${h}h`;
+  return `${timeStr} · ${rel} antes del comienzo del partido`;
 }
 
 interface Player {
@@ -173,7 +204,7 @@ export function PlayerPredictionsModal({ player, leagueId, accessToken, currentU
                     {/* Match predictions for this day */}
                     <div className="px-4 py-2 space-y-2">
                       {dateItems.map((item: any, i: number) => {
-                        const { match, goles_a, goles_b, puntos_obtenidos, resultado } = item;
+                        const { match, goles_a, goles_b, puntos_obtenidos, predictedAt, resultado } = item;
                         const isFinished = resultado?.estado === 'finalizado';
                         const isLiveResult = resultado?.estado === 'en_curso';
                         const pts = puntos_obtenidos ?? null;
@@ -248,6 +279,13 @@ export function PlayerPredictionsModal({ player, leagueId, accessToken, currentU
                               <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50">
                                 <span className="text-[10px] text-muted-foreground/60">En curso o próximamente</span>
                               </div>
+                            )}
+
+                            {/* Timestamp del pronóstico */}
+                            {predictedAt && (
+                              <p className="text-[9px] text-muted-foreground/40 mt-1.5 pt-1 border-t border-border/20">
+                                {formatPredictionMeta(predictedAt, match.fecha_hora)}
+                              </p>
                             )}
                           </div>
                         );

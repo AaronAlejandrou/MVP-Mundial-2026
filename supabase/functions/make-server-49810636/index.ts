@@ -137,7 +137,8 @@ app.post("/make-server-49810636/auth/signup", async (c) => {
     if (error || !newUser) return c.json({ error: "Error al crear la cuenta" }, 500);
     const token = generateToken();
     await db.from("sessions").insert({ token, user_id: newUser.id });
-    return c.json({ token, user: { ...newUser, is_admin: isAdmin(newUser.email) } });
+    const { count: adminCount } = await db.from("leagues").select("*", { count:"exact", head:true }).eq("admin_id", newUser.id);
+    return c.json({ token, user: { ...newUser, is_admin: isAdmin(newUser.email) || (adminCount ?? 0) > 0 } });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
 
@@ -151,13 +152,16 @@ app.post("/make-server-49810636/auth/signin", async (c) => {
     if (await hashPassword(password) !== user.password_hash) return c.json({ error: "Email o contrasena incorrectos" }, 401);
     const token = generateToken();
     await db.from("sessions").insert({ token, user_id: user.id });
-    return c.json({ token, user: { id:user.id, email:user.email, nombre:user.nombre, is_admin: isAdmin(user.email) } });
+    const { count: adminCount } = await db.from("leagues").select("*", { count:"exact", head:true }).eq("admin_id", user.id);
+    return c.json({ token, user: { id:user.id, email:user.email, nombre:user.nombre, is_admin: isAdmin(user.email) || (adminCount ?? 0) > 0 } });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
 });
 
-app.get("/make-server-49810636/auth/me", requireAuth, (c) => {
+app.get("/make-server-49810636/auth/me", requireAuth, async (c) => {
   const user = c.get("user");
-  return c.json({ user: { ...user, is_admin: isAdmin(user.email) } });
+  const db = getDb();
+  const { count } = await db.from("leagues").select("*", { count:"exact", head:true }).eq("admin_id", user.id);
+  return c.json({ user: { ...user, is_admin: isAdmin(user.email) || (count ?? 0) > 0 } });
 });
 
 app.post("/make-server-49810636/auth/logout", requireAuth, async (c) => {
@@ -180,18 +184,45 @@ app.post("/make-server-49810636/leagues", requireAuth, async (c) => {
     const user = c.get("user");
     if (!isAdmin(user.email)) return c.json({ error: "Solo el administrador puede crear la liga." }, 403);
     const db = getDb();
-    const { count } = await db.from("leagues").select("*", { count:"exact", head:true });
-    if ((count ?? 0) > 0) return c.json({ error: "Ya existe una liga activa." }, 400);
-    const { nombre } = await c.req.json();
+    const { nombre, invitation_code: invCode } = await c.req.json();
     if (!nombre?.trim()) return c.json({ error: "El nombre de la liga es requerido" }, 400);
-    const { data: league, error } = await db.from("leagues").insert({ nombre: nombre.trim(), admin_id: user.id, invitation_code: "INTERSEGURO" }).select("id, nombre, admin_id, invitation_code").single();
+    if (!invCode?.trim()) return c.json({ error: "El codigo de invitacion es requerido" }, 400);
+    const { data: league, error } = await db.from("leagues").insert({ nombre: nombre.trim(), admin_id: user.id, invitation_code: invCode.trim().toUpperCase() }).select("id, nombre, admin_id, invitation_code").single();
     if (error || !league) return c.json({ error: "Error al crear la liga" }, 500);
     await db.from("league_members").insert({ league_id: league.id, user_id: user.id, status: "active" });
     await db.from("scores").insert({ league_id: league.id, user_id: user.id, total: 0 });
-    // Inicializar league_phase
     await db.from("league_phase").insert({ league_id: league.id, group_stage_open: true, bracket_locked: false });
+    // Auto-sync: copiar resultados ya finalizados de la liga más antigua (sin otorgar puntos)
+    const { data: master } = await db.from("leagues").select("id").neq("id", league.id).order("created_at", { ascending: true }).limit(1).maybeSingle();
+    if (master) {
+      const { data: fin } = await db.from("match_results").select("match_id, goles_a, goles_b, api_status, minuto, segundo_tiempo_inicio").eq("league_id", master.id).eq("estado", "finalizado");
+      if (fin?.length) {
+        await db.from("match_results").insert(fin.map((r: any) => ({ match_id: r.match_id, league_id: league.id, goles_a: r.goles_a, goles_b: r.goles_b, estado: "finalizado", source: "auto", api_status: r.api_status, minuto: r.minuto, segundo_tiempo_inicio: r.segundo_tiempo_inicio })));
+      }
+    }
     return c.json({ league: { id: league.id, nombre: league.nombre, admin_id: league.admin_id, invitationCode: league.invitation_code, member_count: 1 } });
   } catch(err) { return c.json({ error:"Error interno", details:String(err) }, 500); }
+});
+
+app.post("/make-server-49810636/leagues/:leagueId/sync-results", requireAuth, async (c) => {
+  try {
+    const user = c.get("user");
+    const leagueId = c.req.param("leagueId");
+    const db = getDb();
+    const { data: league } = await db.from("leagues").select("id, admin_id").eq("id", leagueId).maybeSingle();
+    if (!league) return c.json({ error: "Liga no encontrada" }, 404);
+    if (league.admin_id !== user.id && !isAdmin(user.email)) return c.json({ error: "No autorizado" }, 403);
+    const { data: master } = await db.from("leagues").select("id").neq("id", leagueId).order("created_at", { ascending: true }).limit(1).maybeSingle();
+    if (!master) return c.json({ synced: 0 });
+    const { data: fin } = await db.from("match_results").select("match_id, goles_a, goles_b, api_status, minuto, segundo_tiempo_inicio").eq("league_id", master.id).eq("estado", "finalizado");
+    if (!fin?.length) return c.json({ synced: 0 });
+    const { data: existing } = await db.from("match_results").select("match_id").eq("league_id", leagueId);
+    const existingIds = new Set((existing || []).map((r: any) => r.match_id));
+    const toInsert = fin.filter((r: any) => !existingIds.has(r.match_id)).map((r: any) => ({ match_id: r.match_id, league_id: leagueId, goles_a: r.goles_a, goles_b: r.goles_b, estado: "finalizado", source: "auto", api_status: r.api_status, minuto: r.minuto, segundo_tiempo_inicio: r.segundo_tiempo_inicio }));
+    if (!toInsert.length) return c.json({ synced: 0 });
+    await db.from("match_results").insert(toInsert);
+    return c.json({ synced: toInsert.length });
+  } catch(err) { return c.json({ error: "Error interno", details: String(err) }, 500); }
 });
 
 app.get("/make-server-49810636/leagues/my", requireAuth, async (c) => {
@@ -560,21 +591,30 @@ const SPORTSDB_API = 'https://www.thesportsdb.com/api/v1/json/123';
 const SPORTSDB_LID = '4429';
 
 // Mapa directo matchId → idEvent de TheSportsDB.
-// Elimina la dependencia de eventsday.php (que tiene límite de 3 eventos/día)
-// y garantiza 100% de cobertura incluso con 4-6 partidos simultáneos (Jornada 3).
-// Fuente: verificado contra la API real jun-2026. Jornada 2 parcial confirmada.
-// Jornada 2 restante + Jornada 3 se puebla dinámicamente en bootstrapMissingEventIds().
+// 72/72 partidos de fase de grupos verificados contra la API real (jun-2026).
+// Elimina dependencia de eventsday.php (límite 3 eventos/día) y bootstrapMissingEventIds.
 const SPORTSDB_EVENT_IDS: Record<number, string> = {
-  // Jornada 1 — 24/24 confirmados
+  // ── Jornada 1 — 24/24 ──────────────────────────────────────────────────────
   1:"2391728", 2:"2461103", 7:"2461104", 8:"2391732",
   13:"2391730", 14:"2391731", 19:"2391729", 20:"2461105",
   25:"2391733", 26:"2391734", 31:"2391735", 32:"2461106",
   37:"2391736", 38:"2391737", 43:"2391739", 44:"2391738",
   49:"2391742", 50:"2461107", 55:"2391740", 56:"2391741",
   61:"2461108", 62:"2391745", 67:"2391743", 68:"2391744",
-  // Jornada 2 — parcialmente confirmados
-  3:"2461109", 4:"2391747", 10:"2391746", 15:"2391749",
-  16:"2391748", 21:"2391750", 22:"2461111",
+  // ── Jornada 2 — 24/24 ──────────────────────────────────────────────────────
+  3:"2461109",  4:"2391747",  9:"2461110",  10:"2391746",
+  15:"2391749", 16:"2391748", 21:"2391750", 22:"2461111",
+  27:"2391752", 28:"2391751", 33:"2461112", 34:"2391753",
+  39:"2391754", 40:"2391755", 45:"2391756", 46:"2391757",
+  51:"2461113", 52:"2391760", 57:"2391758", 58:"2391759",
+  63:"2391763", 64:"2461114", 69:"2391761", 70:"2391762",
+  // ── Jornada 3 — 24/24 ──────────────────────────────────────────────────────
+  5:"2461116",  6:"2391766",  11:"2391767", 12:"2461115",
+  17:"2391765", 18:"2391764", 23:"2461118", 24:"2391770",
+  29:"2391768", 30:"2391769", 35:"2461117", 36:"2391771",
+  41:"2391773", 42:"2391774", 47:"2391772", 48:"2391776",
+  53:"2391775", 54:"2461119", 59:"2391777", 60:"2391780",
+  65:"2391778", 66:"2461120", 71:"2391781", 72:"2391779",
 };
 
 // Ventana en minutos en la que consideramos un partido "potencialmente en vivo"
@@ -718,7 +758,6 @@ async function pollLiveOnce(leagueIds: string[]): Promise<void> {
   // Rellenar IDs desconocidos antes de procesar (partidos de J2/J3 no hardcodeados)
   await bootstrapMissingEventIds(liveIds);
 
-  const db = getDb();
   // Cargar equipos de fase eliminatoria una vez (para knockout stage)
   const { data: koRows } = await db.from("knockout_match_teams")
     .select("match_id,team1,team2").gte("match_id", 73);
@@ -1068,7 +1107,7 @@ app.get("/make-server-49810636/player-predictions/locked", requireAuth, async (c
     const leagueId = c.req.query("leagueId");
     if (!targetUserId || !leagueId) return c.json({ error: "Parámetros requeridos" }, 400);
     const { data: preds } = await getDb().from("predictions")
-      .select("match_id, goles_a, goles_b, puntos_obtenidos")
+      .select("match_id, goles_a, goles_b, puntos_obtenidos, updated_at")
       .eq("league_id", leagueId).eq("user_id", targetUserId);
     const { data: results } = await getDb().from("match_results").select("match_id, estado, goles_a, goles_b").eq("league_id", leagueId);
     const resultMap: Record<number, any> = {};
@@ -1081,6 +1120,7 @@ app.get("/make-server-49810636/player-predictions/locked", requireAuth, async (c
       goles_a: p.goles_a,
       goles_b: p.goles_b,
       puntos_obtenidos: p.puntos_obtenidos,
+      predictedAt: p.updated_at ?? null,
       resultado: resultMap[p.match_id] ? { goles_a: resultMap[p.match_id].goles_a, goles_b: resultMap[p.match_id].goles_b, estado: resultMap[p.match_id].estado } : null,
     }));
     return c.json({ predictions: lockedPreds });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Check, X, Users, Trophy, Calendar, GitBranch } from 'lucide-react';
+import { Shield, Check, X, Users, Trophy, Calendar, GitBranch, RefreshCw } from 'lucide-react';
 import { GROUP_STAGE_MATCHES } from '../../data/groupStageMatches';
 import { CountryFlag } from './CountryFlag';
 import { apiFetch } from '../../lib/api';
@@ -23,6 +23,8 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
   const [resultSaved, setResultSaved] = useState<number | null>(null);
   const [resultError, setResultError] = useState<string | null>(null);
   const [savingMatchId, setSavingMatchId] = useState<number | null>(null);
+  const [syncState, setSyncState] = useState<'idle' | 'syncing' | 'done' | 'error'>('idle');
+  const [syncCount, setSyncCount] = useState(0);
 
   useEffect(() => {
     if (!externalPending) loadPendingUsers();
@@ -106,6 +108,19 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
       setIsLoading(false);
       setSavingMatchId(null);
     }
+  };
+
+  const handleSync = async () => {
+    setSyncState('syncing');
+    try {
+      const res = await apiFetch(`/leagues/${league.id}/sync-results`, { method: 'POST', token: accessToken });
+      if (res.ok) {
+        const data = await res.json();
+        setSyncCount(data.synced ?? 0);
+        setSyncState('done');
+        if ((data.synced ?? 0) > 0) { loadMatchResults(); onResultUpdated?.(); }
+      } else { setSyncState('error'); }
+    } catch { setSyncState('error'); }
   };
 
   const handleKnockoutWinner = async (matchId: number, winner: string) => {
@@ -220,14 +235,36 @@ export function AdminPanel({ league, accessToken, onClose, onResultUpdated, onAp
           )}
 
         {activeTab === 'results' && (
-            <MatchResultsTab
-              matchResults={matchResults}
-              onUpdateResult={handleUpdateResult}
-              onKnockoutWinner={handleKnockoutWinner}
-              isLoading={isLoading}
-              savingMatchId={savingMatchId}
-              baseMatches={baseMatches}
-            />
+            <>
+              <div className="mb-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40 border border-border">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground">Resultados históricos</p>
+                  <p className="text-xs text-muted-foreground">
+                    {syncState === 'done' && syncCount === 0
+                      ? 'Ya están sincronizados todos los resultados'
+                      : syncState === 'done'
+                      ? `${syncCount} partido${syncCount !== 1 ? 's' : ''} importado${syncCount !== 1 ? 's' : ''} correctamente`
+                      : 'Importa los partidos finalizados de la liga principal (sin otorgar puntos)'}
+                  </p>
+                </div>
+                <button
+                  onClick={handleSync}
+                  disabled={syncState === 'syncing'}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncState === 'syncing' ? 'animate-spin' : ''}`} />
+                  {syncState === 'syncing' ? 'Sincronizando...' : syncState === 'error' ? 'Reintentar' : 'Sincronizar'}
+                </button>
+              </div>
+              <MatchResultsTab
+                matchResults={matchResults}
+                onUpdateResult={handleUpdateResult}
+                onKnockoutWinner={handleKnockoutWinner}
+                isLoading={isLoading}
+                savingMatchId={savingMatchId}
+                baseMatches={baseMatches}
+              />
+            </>
           )}
 
           {activeTab === 'approvals' && (
