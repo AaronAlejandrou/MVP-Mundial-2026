@@ -35,6 +35,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
     if (b.puntaje_total !== a.puntaje_total) return b.puntaje_total - a.puntaje_total;
     return (b.marcadores_exactos ?? 0) - (a.marcadores_exactos ?? 0);
   });
+  const entryFee = currentLeague?.id === 'b4e8efe1-6121-4b5e-a9b4-449572b79644' ? 50 : 20;
 
   const getPositionChange = (currentPos: number, player: LeaderboardPlayer) => {
     if (!player.posicion_anterior) return null;
@@ -62,7 +63,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
   return (
     <div className="relative w-full max-w-4xl mx-auto py-8 sm:py-12 px-4 sm:px-6">
 
-      {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+      {showTerms && <TermsModal onClose={() => setShowTerms(false)} entryFee={entryFee} />}
 
       {selectedPlayer && currentLeague && accessToken && (
         <PlayerPredictionsModal
@@ -140,7 +141,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
 
       {/* Premio acumulado */}
       {sortedPlayers.length > 0 && (() => {
-        const pool = sortedPlayers.length * 20;
+        const pool = sortedPlayers.length * entryFee;
         const first = Math.round(pool * 0.70);
         const second = Math.round(pool * 0.30);
         return (
