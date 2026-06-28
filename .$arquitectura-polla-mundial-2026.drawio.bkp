@@ -1,0 +1,94 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <mxCell id="title" value="&lt;b&gt;Arquitectura — Polla Mundial 2026&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="20" width="940" height="36" as="geometry"/>
+    </mxCell>
+
+    <!-- ═══ FRONTEND ═══ -->
+    <mxCell id="fe" value="&lt;b&gt;Frontend&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;React + Vite · Vercel&lt;/font&gt;" style="swimlane;startSize=46;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#000;fontSize=13;fontStyle=1;rounded=1;arcSize=4;html=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="72" width="210" height="336" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="fe_url" value="pollamundial2026-coral.vercel.app" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;fontColor=#555;" vertex="1" parent="fe">
+      <mxGeometry x="10" y="52" width="190" height="18" as="geometry"/>
+    </mxCell>
+    <mxCell id="fe_auth"     value="🔐  Auth / Login"                     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe"><mxGeometry x="12" y="76"  width="186" height="30" as="geometry"/></mxCell>
+    <mxCell id="fe_pred"     value="📋  Predicciones de partidos"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe"><mxGeometry x="12" y="114" width="186" height="30" as="geometry"/></mxCell>
+    <mxCell id="fe_match"    value="📅  Timeline de partidos"              style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe"><mxGeometry x="12" y="152" width="186" height="30" as="geometry"/></mxCell>
+    <mxCell id="fe_leader"   value="🏆  Leaderboard"                       style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe"><mxGeometry x="12" y="190" width="186" height="30" as="geometry"/></mxCell>
+    <mxCell id="fe_bracket"  value="🗂  Bracket eliminatoria"              style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe"><mxGeometry x="12" y="228" width="186" height="30" as="geometry"/></mxCell>
+    <mxCell id="fe_standings" value="📊  Standings de grupos"             style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe"><mxGeometry x="12" y="266" width="186" height="30" as="geometry"/></mxCell>
+    <mxCell id="fe_leagues"  value="⚙  Gestión de ligas"                  style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe"><mxGeometry x="12" y="304" width="186" height="24" as="geometry"/></mxCell>
+
+    <!-- ═══ EDGE FUNCTION ═══ -->
+    <mxCell id="ef" value="&lt;b&gt;Edge Function&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;Deno + Hono · Supabase&lt;/font&gt;" style="swimlane;startSize=46;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#000;fontSize=13;fontStyle=1;rounded=1;arcSize=4;html=1;" vertex="1" parent="1">
+      <mxGeometry x="280" y="72" width="290" height="336" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="ef_api" value="REST API: Auth · Ligas · Partidos · Predicciones · Bracket" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4caf50;fontSize=11;" vertex="1" parent="ef">
+      <mxGeometry x="12" y="54" width="266" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="ef_mw" value="CORS · requireAuth (JWT Bearer) · Logger" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#bbb;fontSize=10;" vertex="1" parent="ef">
+      <mxGeometry x="12" y="92" width="266" height="26" as="geometry"/>
+    </mxCell>
+    <mxCell id="ef_auth" value="Auth propia: contraseñas con SHA-256 · sesiones en DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;fontSize=10;" vertex="1" parent="ef">
+      <mxGeometry x="12" y="126" width="266" height="26" as="geometry"/>
+    </mxCell>
+    <mxCell id="ef_pts" value="Puntos: marcador exacto = 5 · resultado correcto = 2 · fallo = 0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4caf50;fontSize=10;" vertex="1" parent="ef">
+      <mxGeometry x="12" y="160" width="266" height="26" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="ef_poller" value="&lt;b&gt;⚡ Live Poller&lt;/b&gt;&lt;br&gt;Consulta TheSportsDB cada 5 s&lt;br&gt;Ventana: 5 min antes → 135 min después del kickoff&lt;br&gt;Actualiza match_results · Calcula puntos automáticamente&lt;br&gt;ET / PEN: score congelado (solo cuentan 90 min)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;strokeWidth=2;fontSize=10;fontStyle=1;" vertex="1" parent="ef">
+      <mxGeometry x="12" y="200" width="266" height="94" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="ef_lock" value="Bloqueo de predicciones: 25 min antes del kickoff" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#bbb;fontSize=10;" vertex="1" parent="ef">
+      <mxGeometry x="12" y="302" width="266" height="26" as="geometry"/>
+    </mxCell>
+
+    <!-- ═══ POSTGRESQL ═══ -->
+    <mxCell id="db" value="&lt;b&gt;PostgreSQL&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;Supabase&lt;/font&gt;" style="swimlane;startSize=46;fillColor=#fff9e6;strokeColor=#d6b656;fontColor=#000;fontSize=13;fontStyle=1;rounded=1;arcSize=4;html=1;" vertex="1" parent="1">
+      <mxGeometry x="626" y="72" width="196" height="336" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="t1" value="users"                style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="52"  width="172" height="28" as="geometry"/></mxCell>
+    <mxCell id="t2" value="sessions"             style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="86"  width="172" height="28" as="geometry"/></mxCell>
+    <mxCell id="t3" value="leagues"              style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="120" width="172" height="28" as="geometry"/></mxCell>
+    <mxCell id="t4" value="league_members"       style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="154" width="172" height="28" as="geometry"/></mxCell>
+    <mxCell id="t5" value="predictions"          style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="188" width="172" height="28" as="geometry"/></mxCell>
+    <mxCell id="t6" value="match_results"        style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="222" width="172" height="28" as="geometry"/></mxCell>
+    <mxCell id="t7" value="scores"               style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="256" width="172" height="28" as="geometry"/></mxCell>
+    <mxCell id="t8" value="knockout_match_teams" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="290" width="172" height="28" as="geometry"/></mxCell>
+    <mxCell id="t9" value="league_phase"         style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="db"><mxGeometry x="12" y="324" width="172" height="8"  as="geometry"/></mxCell>
+
+    <!-- ═══ THESPORTSDB ═══ -->
+    <mxCell id="sdb" value="&lt;b&gt;TheSportsDB&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;API Externa · FIFA World Cup 2026&lt;/font&gt;" style="swimlane;startSize=46;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#000;fontSize=13;fontStyle=1;rounded=1;arcSize=4;html=1;" vertex="1" parent="1">
+      <mxGeometry x="280" y="458" width="290" height="170" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="sdb_ep"   value="Endpoints: lookupevent · eventsseason · eventsday" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="sdb">
+      <mxGeometry x="12" y="54" width="266" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="sdb_resp" value="Respuesta: strStatus (1H / HT / 2H / FT) · marcadores · equipos" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffd7d7;strokeColor=#b85450;fontSize=10;" vertex="1" parent="sdb">
+      <mxGeometry x="12" y="90" width="266" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="sdb_note" value="Solo consultada por el Live Poller · no desde el frontend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8f8;strokeColor=#ccc;fontSize=9;" vertex="1" parent="sdb">
+      <mxGeometry x="12" y="126" width="266" height="22" as="geometry"/>
+    </mxCell>
+
+    <!-- ═══ FLECHAS ═══ -->
+    <mxCell id="e1" value="&lt;b&gt;HTTP REST · Bearer JWT&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#6c8ebf;strokeWidth=2.5;fontStyle=1;fontSize=10;labelBackgroundColor=#dae8fc;" edge="1" source="fe" target="ef" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e2" value="&lt;b&gt;supabase-js · service_role&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6b656;strokeWidth=2.5;fontStyle=1;fontSize=10;labelBackgroundColor=#fff9e6;" edge="1" source="ef" target="db" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e3" value="&lt;b&gt;fetch() cada 5 s&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;strokeWidth=2.5;dashed=1;fontStyle=1;fontSize=10;labelBackgroundColor=#f8cecc;" edge="1" source="ef_poller" target="sdb" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

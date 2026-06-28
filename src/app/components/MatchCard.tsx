@@ -38,41 +38,51 @@ function computeLiveMinute(
   fechaHora: string,
   apiStatus: string | null | undefined,
   segundoTiempoInicio?: string | null,
-): string | null {
+): { min: string; sec: number } | null {
   if (apiStatus !== '1H' && apiStatus !== '2H') return null;
   const kickMs = new Date(fechaHora).getTime();
   if (Number.isNaN(kickMs)) return null;
-  const elapsed = Math.floor((Date.now() - kickMs) / 60000);
-  if (elapsed < 0) return null;
+  const nowMs = Date.now();
+  const totalMs = nowMs - kickMs;
+  if (totalMs < 0) return null;
+  const totalSecs = Math.floor(totalMs / 1000);
+  const elapsed = Math.floor(totalSecs / 60);
+  const sec = totalSecs % 60;
 
   if (apiStatus === '1H') {
-    if (elapsed <= 45) return String(Math.max(elapsed, 1));
+    if (elapsed <= 45) return { min: String(Math.max(elapsed, 1)), sec };
     // Tiempo añadido del primer tiempo (cap a +15 por si la API tarda en pasar a HT)
-    return `45+${Math.min(elapsed - 45, 15)}`;
+    return { min: `45+${Math.min(elapsed - 45, 15)}`, sec };
   }
 
   // 2T — preferimos el ancla real del inicio del segundo tiempo.
   if (segundoTiempoInicio) {
     const startMs = new Date(segundoTiempoInicio).getTime();
     if (!Number.isNaN(startMs)) {
-      const m = 46 + Math.floor((Date.now() - startMs) / 60000);
-      if (m <= 90) return String(Math.max(m, 46));
-      return `90+${Math.min(m - 90, 20)}`;
+      const secsFromStart = Math.floor((nowMs - startMs) / 1000);
+      const mFromStart = Math.floor(secsFromStart / 60);
+      const secInMin = secsFromStart % 60;
+      const m = 46 + mFromStart;
+      if (m <= 90) return { min: String(Math.max(m, 46)), sec: secInMin };
+      return { min: `90+${Math.min(m - 90, 20)}`, sec: secInMin };
     }
   }
   // Fallback: estimación desde el kickoff (asume 15' de descanso).
   const play = elapsed - 15;
-  if (play < 46) return '46';
-  if (play <= 90) return String(play);
-  return `90+${Math.min(play - 90, 20)}`;
+  if (play < 46) return { min: '46', sec };
+  if (play <= 90) return { min: String(play), sec };
+  return { min: `90+${Math.min(play - 90, 20)}`, sec };
 }
 
-function getPhaseLabel(apiStatus: string | null | undefined, minuto: string | null | undefined, isLive: boolean, estado: string | undefined): React.ReactNode {
+function getPhaseLabel(apiStatus: string | null | undefined, liveTime: { min: string; sec: number } | null | undefined, isLive: boolean, estado: string | undefined): React.ReactNode {
   if (estado === 'finalizado') return 'Resultado final';
   if (!apiStatus) return isLive ? <>Resultado <span className="text-rose-500">en vivo</span></> : 'Resultado';
   if (apiStatus === 'HT') return 'Medio tiempo';
-  if (apiStatus === '1H') return <>Primer tiempo{minuto ? <> · <span className="text-rose-500 animate-pulse">{minuto}'</span></> : null}</>;
-  if (apiStatus === '2H') return <>Segundo tiempo{minuto ? <> · <span className="text-rose-500 animate-pulse">{minuto}'</span></> : null}</>;
+  const clock = liveTime
+    ? <> · <span className="text-rose-500 animate-pulse tabular-nums">{liveTime.min}'<span className="text-[0.85em] opacity-70">{String(liveTime.sec).padStart(2, '0')}"</span></span></>
+    : null;
+  if (apiStatus === '1H') return <>Primer tiempo{clock}</>;
+  if (apiStatus === '2H') return <>Segundo tiempo{clock}</>;
   if (['FT','ET','AET','BT','P','PEN'].includes(apiStatus)) return 'Resultado final';
   return isLive ? <>Resultado <span className="text-rose-500">en vivo</span></> : 'Resultado';
 }
@@ -142,12 +152,10 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     return () => clearInterval(id);
   }, [match.estado]);
 
-  // Ticker del minuto en vivo: re-render cada 15s mientras el partido está en
-  // curso, para que el reloj calculado client-side (computeLiveMinute) avance solo
-  // aunque el marcador no cambie. Se detiene al finalizar.
+  // Ticker del reloj en vivo: re-render cada 1s para mostrar minuto y segundos.
   useEffect(() => {
     if (match.estado !== 'en_curso') return;
-    const id = setInterval(() => setTick(t => t + 1), 15_000);
+    const id = setInterval(() => setTick(t => t + 1), 1_000);
     return () => clearInterval(id);
   }, [match.estado]);
 
