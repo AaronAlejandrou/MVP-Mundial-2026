@@ -7,6 +7,9 @@ import { GroupHoverCard } from './GroupHoverCard';
 import { TeamHoverCard } from './TeamHoverCard';
 import { MatchPredictionsModal } from './MatchPredictionsModal';
 
+// Trazo del logo de TikTok (nota musical). Se reutiliza en las 3 capas del glitch.
+const TIKTOK_PATH = "M16.6 5.82A4.28 4.28 0 0 1 15.56 3h-3.05v12.43a2.4 2.4 0 1 1-2.4-2.4c.2 0 .39.03.57.07v-3.1a5.5 5.5 0 1 0 4.88 5.46V8.9a7.28 7.28 0 0 0 4.27 1.37V7.2a4.28 4.28 0 0 1-3.23-1.38z";
+
 interface Match {
   id: number;
   equipo_a: string;
@@ -255,6 +258,30 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
 
   const canShowModal = !!(leagueId && accessToken);
 
+  // Abre la búsqueda del partido: en móvil intenta la app de TikTok (esquema
+  // snssdk1233://); si no abre (sin app) o estamos en web, cae a búsqueda de Google.
+  const openTikTok = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const query = `${match.equipo_a} vs ${match.equipo_b}`;
+    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+    if (!isMobile) { window.open(googleUrl, '_blank', 'noopener'); return; }
+    const scheme = `snssdk1233://search?keyword=${encodeURIComponent(query)}`;
+    let leftPage = false;
+    const onHide = () => { leftPage = true; };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onHide);
+    window.location.href = scheme;
+    // Si la app no abrió (seguimos en la página tras 1.2s), vamos a Google.
+    setTimeout(() => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onHide);
+      if (!leftPage && document.visibilityState === 'visible') {
+        window.location.href = googleUrl;
+      }
+    }, 1200);
+  };
+
   return (
     <div className="relative w-full">
       <div className="bg-card rounded-xl shadow-mundial border border-border overflow-hidden transition-all duration-300 hover:shadow-mundial-lg max-w-full">
@@ -302,29 +329,67 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
                   )}
                 </div>
               )}
-              {/* Group Button */}
-              <div className="relative" ref={groupBtnRef} id={`group-btn-${match.id}`}>
-                <button
-                  onMouseEnter={showGroup}
-                  onMouseLeave={hideGroup}
-                  onClick={() => { dismissDot('polla_seen_grupo', setSeenGrupo); onViewGroup?.(match.grupo); }}
-                  className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-muted hover:bg-primary hover:text-white text-foreground transition-all flex items-center gap-1.5 border border-border hover:border-primary group"
-                  title={`Ver tabla y partidos del Grupo ${match.grupo}`}
-                >
-                  <Table2 className="w-3 h-3 text-primary group-hover:text-white transition-colors" />
-                  <span>GRUPO {match.grupo}</span>
-                  <ChevronRight className="w-3 h-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                </button>
-                {!seenGrupo && (
-                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-pulse pointer-events-none" />
-                )}
-              </div>
+              {/* Fase de grupos: botón a la tabla del grupo.
+                  Eliminatorias (id ≥ 73): chip estático con la fase, sin "GRUPO". */}
+              {match.id >= 73 ? (
+                <div className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-muted text-foreground flex items-center gap-1.5 border border-border">
+                  <Trophy className="w-3 h-3 text-primary" />
+                  <span>{match.grupo}</span>
+                </div>
+              ) : (
+                <div className="relative" ref={groupBtnRef} id={`group-btn-${match.id}`}>
+                  <button
+                    onMouseEnter={showGroup}
+                    onMouseLeave={hideGroup}
+                    onClick={() => { dismissDot('polla_seen_grupo', setSeenGrupo); onViewGroup?.(match.grupo); }}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold bg-muted hover:bg-primary hover:text-white text-foreground transition-all flex items-center gap-1.5 border border-border hover:border-primary group"
+                    title={`Ver tabla y partidos del Grupo ${match.grupo}`}
+                  >
+                    <Table2 className="w-3 h-3 text-primary group-hover:text-white transition-colors" />
+                    <span>GRUPO {match.grupo}</span>
+                    <ChevronRight className="w-3 h-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+                  {!seenGrupo && (
+                    <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-rose-500 animate-pulse pointer-events-none" />
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Match Body */}
-        <div className="px-3 sm:px-5 py-4 sm:py-6">
+        <div className="relative px-3 sm:px-5 py-4 sm:py-6">
+          {/* Botón TikTok — busca el partido en la app (móvil) o Google (web).
+              Absolute para no desplazar banderas/marcador. */}
+          {/* El borde es el gradiente animado (.tiktok-beam) y el span interior negro
+              cubre el centro, dejando ver solo una franja luminosa que recorre el
+              contorno. El glitch del logo se sincroniza con esa franja. */}
+          <button
+            onClick={openTikTok}
+            title={`Ver ${match.equipo_a} vs ${match.equipo_b} en TikTok`}
+            aria-label={`Ver ${match.equipo_a} vs ${match.equipo_b} en TikTok`}
+            className="tiktok-beam group absolute top-2 right-3 sm:top-3 sm:right-5 z-10 rounded-full p-[1.5px] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_14px_-3px_rgba(37,244,238,0.75)]"
+          >
+            <span className="flex items-center gap-1.5 rounded-full bg-black px-2.5 py-1 text-white">
+              {/* Logo TikTok con glitch en loop: capas cian y rosa desfasadas bajo la blanca */}
+              <span className="relative inline-block w-3.5 h-3.5 flex-shrink-0">
+                <svg viewBox="0 0 24 24" fill="#25F4EE" aria-hidden="true"
+                  className="tiktok-glitch-cyan absolute inset-0 w-full h-full">
+                  <path d={TIKTOK_PATH} />
+                </svg>
+                <svg viewBox="0 0 24 24" fill="#FE2C55" aria-hidden="true"
+                  className="tiktok-glitch-pink absolute inset-0 w-full h-full">
+                  <path d={TIKTOK_PATH} />
+                </svg>
+                <svg viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"
+                  className="absolute inset-0 w-full h-full">
+                  <path d={TIKTOK_PATH} />
+                </svg>
+              </span>
+              <span className="text-[10px] font-bold">Ver más</span>
+            </span>
+          </button>
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Team A */}
             <div className="flex flex-col items-center flex-1 min-w-0 relative" id={`team-a-${match.id}`}>

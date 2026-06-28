@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { RUNNING_VERSION } from '../lib/version';
 import { Layout } from './components/Layout';
 import { MatchesTimeline } from './components/MatchesTimeline';
 import { Leaderboard } from './components/Leaderboard';
@@ -40,6 +41,10 @@ export default function App() {
 
   const [bracketLocked, setBracketLocked] = useState(false);
   const [knockoutTeams, setKnockoutTeams] = useState<Record<number, { team1: string; team2: string }>>({});
+
+  // Badge "¡Actu!" en Eliminatorias: invita a entrar tras una actualización.
+  // Se apaga y se recuerda por versión cuando el usuario entra a Eliminatorias.
+  const [showActu, setShowActu] = useState(false);
 
   // Snapshot de los partidos enriquecidos, leído por el intervalo de auto-refresco
   const liveMatchesRef = useRef<any[]>([]);
@@ -288,7 +293,21 @@ export default function App() {
   useEffect(() => {
     const id = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
-      if (!anyLiveRef.current && !anyInWindowRef.current) return;
+      // Calcular "en vivo o dentro de ventana" FRESCO en cada tick desde el
+      // calendario (fecha_hora es estática) + Date.now(). NO depende de que App
+      // se re-renderice: así el heartbeat arranca solo en el kickoff aunque el tab
+      // lleve rato abierto desde antes de que el partido entrara a su ventana.
+      // (Antes leía refs calculados en el render → si App no re-renderizaba, el
+      //  flag quedaba congelado en false y el marcador se quedaba pegado en 0-0.)
+      const now = Date.now();
+      const active = liveMatchesRef.current.some((m: any) => {
+        if (m.estado === 'en_curso') return true;
+        if (m.estado === 'finalizado') return false;
+        const kick = new Date(m.fecha_hora).getTime();
+        if (Number.isNaN(kick)) return false;
+        return now >= kick - 5 * 60 * 1000 && now <= kick + 135 * 60 * 1000;
+      });
+      if (!active) return;
       refreshLiveData();
     }, 30000);
     return () => clearInterval(id);
@@ -435,6 +454,18 @@ export default function App() {
     });
   }
 
+  // Mostrar "¡Actu!" si el usuario no ha entrado a Eliminatorias con esta versión.
+  useEffect(() => {
+    if (localStorage.getItem('polla_elims_seen_version') !== RUNNING_VERSION) setShowActu(true);
+  }, []);
+  // Al entrar a Eliminatorias se apaga y se recuerda para esta versión.
+  useEffect(() => {
+    if (currentView === 'knockout' && showActu) {
+      setShowActu(false);
+      localStorage.setItem('polla_elims_seen_version', RUNNING_VERSION);
+    }
+  }, [currentView, showActu]);
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (isCheckingAuth || isAuthenticating) {
@@ -550,6 +581,7 @@ export default function App() {
         isAdmin={isLeagueAdmin}
         pendingCount={pendingApprovals.length}
         onOpenAdmin={() => setShowAdminPanel(true)}
+        showActuBadge={showActu}
       >
         {isLeagueAdmin && pendingApprovals.length > 0 && (
           <div className="mb-4 p-3 bg-accent/10 border-2 border-accent/40 rounded-xl flex items-center gap-3">
@@ -577,13 +609,16 @@ export default function App() {
           />
         )}
         {currentView === 'knockout' && (
-          <KnockoutBracket 
-            leagueId={currentLeague?.id} 
+          <KnockoutBracket
+            leagueId={currentLeague?.id}
             predictions={predictions}
             matchResults={matchResults}
             onSavePrediction={handleSavePrediction}
             knockoutTeams={knockoutTeams}
             bracketLocked={bracketLocked}
+            accessToken={accessToken}
+            currentUserId={currentUser?.id}
+            allMatches={enrichedMatches}
           />
         )}
         {currentView === 'standings' && (

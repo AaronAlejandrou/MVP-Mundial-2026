@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Trophy, Award, Loader2, Lock, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { CountryFlag } from './CountryFlag';
 import { apiFetch } from '../../lib/api';
@@ -10,7 +10,7 @@ const TOTAL_H = SLOT * 8;
 
 function isPlaceholder(t: string) { return /^[WL]\d|^[1-4]º/.test(t); }
 
-function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, prediction }: {
+function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, prediction, highlighted }: {
   m: MInfo;
   resolveTeam: (id: number, s: 'team1' | 'team2', fb: string) => string;
   isFinal?: boolean;
@@ -18,6 +18,7 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, predi
   onClick?: (m: MInfo) => void;
   result?: any;
   prediction?: any;
+  highlighted?: boolean;
 }) {
   const rt1 = resolveTeam(m.id, 'team1', m.t1);
   const rt2 = resolveTeam(m.id, 'team2', m.t2);
@@ -37,9 +38,9 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, predi
     : "bg-muted/30 text-muted-foreground";
 
   const isFinished = result && result.estado === 'finalizado';
-  
-  return (
-    <div 
+
+  const card = (
+    <div
       onClick={() => onClick && onClick(m)}
       className={`w-full rounded-md bg-card ${containerClass} ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
     >
@@ -47,7 +48,7 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, predi
         <div className="flex items-center gap-1">
           {isFinal && <Trophy className="w-3 h-3 flex-shrink-0" />}
           {isThird && <Award className="w-3 h-3 flex-shrink-0" />}
-          <span className="text-[8px] xl:text-[9px] font-bold">#{m.num}</span>
+          <span className="text-[8px] xl:text-[9px] font-bold tabular-nums">{m.time}</span>
         </div>
         <div className="flex items-center gap-1">
           {prediction?.puntos_obtenidos !== undefined && isFinished && (
@@ -95,15 +96,25 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, predi
       </div>
     </div>
   );
+
+  return highlighted ? (
+    <div className="bracket-beam relative rounded-lg p-[2px] w-full">
+      <span className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[8px] font-black leading-none shadow-lg shadow-rose-500/40 animate-bounce pointer-events-none">
+        ¡Click!
+      </span>
+      {card}
+    </div>
+  ) : card;
 }
 
-function BracketCol({ matches, level, label, resolveTeam, isRightSide, onMatchClick, predictions, matchResults }: {
+function BracketCol({ matches, level, label, resolveTeam, isRightSide, onMatchClick, predictions, matchResults, highlightedIds }: {
   matches: MInfo[]; level: number; label: string;
   resolveTeam: (id: number, s: 'team1' | 'team2', fb: string) => string;
   isRightSide?: boolean;
   onMatchClick?: (m: MInfo) => void;
   predictions?: Record<number, any>;
   matchResults?: Record<number, any>;
+  highlightedIds?: Set<number>;
 }) {
   const slotH = SLOT * Math.pow(2, level);
   let drawLeft = false;
@@ -127,18 +138,19 @@ function BracketCol({ matches, level, label, resolveTeam, isRightSide, onMatchCl
         <div key={m.id} style={{ height: slotH }} className="flex items-center justify-center w-full relative group">
           {drawLeft && <div className="absolute left-[-4px] w-1 xl:w-2 h-px bg-border/80 -z-10 group-hover:bg-primary/50" />}
           {drawRight && <div className="absolute right-[-4px] w-1 xl:w-2 h-px bg-border/80 -z-10 group-hover:bg-primary/50" />}
-          <BracketMatch m={m} resolveTeam={resolveTeam} onClick={onMatchClick} result={matchResults?.[m.id]} prediction={predictions?.[m.id]} />
+          <BracketMatch m={m} resolveTeam={resolveTeam} onClick={onMatchClick} result={matchResults?.[m.id]} prediction={predictions?.[m.id]} highlighted={highlightedIds?.has(m.id)} />
         </div>
       ))}
     </div>
   );
 }
 
-function MobileView({ resolveTeam, onMatchClick, predictions, matchResults }: { 
+function MobileView({ resolveTeam, onMatchClick, predictions, matchResults, highlightedIds }: {
   resolveTeam: (id: number, s: 'team1' | 'team2', fb: string) => string;
   onMatchClick?: (m: MInfo) => void;
   predictions?: Record<number, any>;
   matchResults?: Record<number, any>;
+  highlightedIds?: Set<number>;
 }) {
   const [open, setOpen] = useState<number[]>([0, 5]);
   const toggle = (i: number) => setOpen(p => p.includes(i) ? p.filter(x => x !== i) : [...p, i]);
@@ -162,7 +174,7 @@ function MobileView({ resolveTeam, onMatchClick, predictions, matchResults }: {
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-card">
               {ph.matches.map(m => (
                 <div key={m.id} className="flex justify-center w-full max-w-[240px] mx-auto">
-                  <BracketMatch m={m} resolveTeam={resolveTeam} isFinal={ph.isFinal} isThird={ph.isThird} onClick={onMatchClick} result={matchResults?.[m.id]} prediction={predictions?.[m.id]} />
+                  <BracketMatch m={m} resolveTeam={resolveTeam} isFinal={ph.isFinal} isThird={ph.isThird} onClick={onMatchClick} result={matchResults?.[m.id]} prediction={predictions?.[m.id]} highlighted={highlightedIds?.has(m.id)} />
                 </div>
               ))}
             </div>
@@ -173,20 +185,26 @@ function MobileView({ resolveTeam, onMatchClick, predictions, matchResults }: {
   );
 }
 
-export function KnockoutBracket({ 
+export function KnockoutBracket({
   leagueId,
   predictions,
   matchResults,
   onSavePrediction,
   knockoutTeams = {},
-  bracketLocked = false
-}: { 
+  bracketLocked = false,
+  accessToken,
+  currentUserId,
+  allMatches
+}: {
   leagueId?: string;
   predictions?: Record<number, any>;
   matchResults?: Record<number, any>;
   onSavePrediction?: (matchId: number, golesA: number, golesB: number) => Promise<void>;
   knockoutTeams?: Record<number, { team1: string; team2: string }>;
   bracketLocked?: boolean;
+  accessToken?: string;
+  currentUserId?: string;
+  allMatches?: any[];
 }) {
   // Data is now fetched globally and passed via props
   const isLoading = false;
@@ -195,6 +213,20 @@ export function KnockoutBracket({
     const t = knockoutTeams[id]?.[s];
     return (t === undefined || t === null || t === "") ? fb : t;
   };
+
+  // Partidos del día más próximo (hora Lima) que aún no finalizan → reciben el beam.
+  // La fecha_hora se construye con offset -05:00 (Lima), así que su parte YYYY-MM-DD
+  // ya es la fecha local de Lima; la comparamos contra "hoy" en Lima.
+  const highlightedIds = useMemo(() => {
+    const resolved = getResolvedKnockoutMatches(knockoutTeams);
+    const limaToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+    const pend = resolved
+      .map(m => ({ id: m.id, day: m.fecha_hora.slice(0, 10), estado: matchResults?.[m.id]?.estado }))
+      .filter(m => m.estado !== 'finalizado' && m.day >= limaToday);
+    if (!pend.length) return new Set<number>();
+    const nearest = pend.reduce((min, m) => (m.day < min ? m.day : min), pend[0].day);
+    return new Set(pend.filter(m => m.day === nearest).map(m => m.id));
+  }, [knockoutTeams, matchResults]);
 
   // Modal state
   const [selectedMatchInfo, setSelectedMatchInfo] = useState<MInfo | null>(null);
@@ -254,10 +286,10 @@ export function KnockoutBracket({
               {[1,2,3,4,5,6,7].map(i => <div key={i} className="h-full border-l border-border" />)}
             </div>
 
-            {/* Col 1 */} <BracketCol matches={R32_L} level={0} label="16AVOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
-            {/* Col 2 */} <BracketCol matches={R16_L} level={1} label="OCTAVOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
-            {/* Col 3 */} <BracketCol matches={QF_L}  level={2} label="CUARTOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
-            {/* Col 4 */} <BracketCol matches={SF_L}  level={3} label="SEMIS"   resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+            {/* Col 1 */} <BracketCol matches={R32_L} level={0} label="16AVOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
+            {/* Col 2 */} <BracketCol matches={R16_L} level={1} label="OCTAVOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
+            {/* Col 3 */} <BracketCol matches={QF_L}  level={2} label="CUARTOS" resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
+            {/* Col 4 */} <BracketCol matches={SF_L}  level={3} label="SEMIS"   resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
 
             {/* Col 5: CENTER */}
             <div className="flex flex-col items-center justify-center relative w-full h-full" style={{ height: TOTAL_H + 32 }}>
@@ -269,7 +301,7 @@ export function KnockoutBracket({
                     <Trophy className="w-3.5 h-3.5 text-accent" />
                     <span className="text-[9px] xl:text-[10px] font-extrabold tracking-widest text-accent uppercase">Final</span>
                   </div>
-                  <BracketMatch m={FINAL} resolveTeam={resolveTeam} isFinal onClick={handleMatchClick} result={matchResults?.[FINAL.id]} prediction={predictions?.[FINAL.id]} />
+                  <BracketMatch m={FINAL} resolveTeam={resolveTeam} isFinal onClick={handleMatchClick} result={matchResults?.[FINAL.id]} prediction={predictions?.[FINAL.id]} highlighted={highlightedIds.has(FINAL.id)} />
                 </div>
               </div>
 
@@ -278,20 +310,20 @@ export function KnockoutBracket({
                   <Award className="w-3 h-3 text-secondary" />
                   <span className="text-[8px] xl:text-[9px] font-bold tracking-widest text-secondary uppercase">3er Lugar</span>
                 </div>
-                <BracketMatch m={THIRD} resolveTeam={resolveTeam} isThird onClick={handleMatchClick} result={matchResults?.[THIRD.id]} prediction={predictions?.[THIRD.id]} />
+                <BracketMatch m={THIRD} resolveTeam={resolveTeam} isThird onClick={handleMatchClick} result={matchResults?.[THIRD.id]} prediction={predictions?.[THIRD.id]} highlighted={highlightedIds.has(THIRD.id)} />
               </div>
             </div>
 
-            {/* Col 6 */} <BracketCol matches={SF_R}  level={3} label="SEMIS"   resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
-            {/* Col 7 */} <BracketCol matches={QF_R}  level={2} label="CUARTOS" resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
-            {/* Col 8 */} <BracketCol matches={R16_R} level={1} label="OCTAVOS" resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
-            {/* Col 9 */} <BracketCol matches={R32_R} level={0} label="16AVOS"  resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+            {/* Col 6 */} <BracketCol matches={SF_R}  level={3} label="SEMIS"   resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
+            {/* Col 7 */} <BracketCol matches={QF_R}  level={2} label="CUARTOS" resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
+            {/* Col 8 */} <BracketCol matches={R16_R} level={1} label="OCTAVOS" resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
+            {/* Col 9 */} <BracketCol matches={R32_R} level={0} label="16AVOS"  resolveTeam={resolveTeam} isRightSide onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
           </div>
         </div>
       </div>
 
       <div className="xl:hidden w-full max-w-3xl mx-auto pb-8">
-        <MobileView resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} />
+        <MobileView resolveTeam={resolveTeam} onMatchClick={handleMatchClick} predictions={predictions} matchResults={matchResults} highlightedIds={highlightedIds} />
       </div>
 
       {/* Prediction Modal */}
@@ -304,14 +336,15 @@ export function KnockoutBracket({
             >
               <X className="w-5 h-5" />
             </button>
-            <div className="p-6 pt-10">
-              <h3 className="text-xl font-bold text-center mb-6 text-foreground">
-                Pronosticar {enrichedSelectedMatch.grupo}
-              </h3>
-              <MatchCard 
+            <div className="p-4 sm:p-6 pt-12">
+              <MatchCard
                 match={enrichedSelectedMatch as any}
                 prediction={predictions?.[enrichedSelectedMatch.id]}
                 onSavePrediction={onSavePrediction}
+                leagueId={leagueId}
+                accessToken={accessToken}
+                currentUserId={currentUserId}
+                allMatches={allMatches}
               />
             </div>
           </div>

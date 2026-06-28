@@ -341,3 +341,82 @@
     }
   }
 }
+
+/* ── Botón TikTok: zona luminosa que "pinta" el contorno + glitch sincronizado ──
+   El borde es un conic-gradient con una franja brillante (cian→blanco→rosa) que
+   gira en loop (3.2s) recorriendo todo el contorno de la píldora. El glitch del
+   logo pulsa al ~75% del ciclo, que es cuando la franja pasa por el lado izquierdo
+   (donde está el logo). Mismo duration → quedan sincronizados.
+   La franja gira animando --ttk-angle (requiere @property para interpolar). */
+@property --ttk-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ttk-orbit { to { --ttk-angle: 360deg; } }
+@keyframes tiktok-glitch-cyan {
+  0%, 62%, 88%, 100% { transform: translate(-1px, -1px); }
+  75%                { transform: translate(-3.5px, -2.5px); }
+}
+@keyframes tiktok-glitch-pink {
+  0%, 62%, 88%, 100% { transform: translate(1px, 1px); }
+  75%                { transform: translate(3.5px, 2.5px); }
+}
+
+.tiktok-beam {
+  background: conic-gradient(from var(--ttk-angle),
+    #ffffff 0deg,
+    #FE2C55 12deg,
+    rgba(255, 255, 255, 0.12) 48deg,
+    rgba(255, 255, 255, 0.12) 312deg,
+    #25F4EE 348deg,
+    #ffffff 360deg);
+  animation: ttk-orbit 3.2s linear infinite;
+}
+.tiktok-glitch-cyan { animation: tiktok-glitch-cyan 3.2s ease-in-out infinite; }
+.tiktok-glitch-pink { animation: tiktok-glitch-pink 3.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tiktok-beam { animation: none; }
+  .tiktok-glitch-cyan { animation: none; transform: translate(-1px, -1px); }
+  .tiktok-glitch-pink { animation: none; transform: translate(1px, 1px); }
+}
+
+/* ── Beam para la tarjeta del partido más cercano (vista Eliminatorias) ──
+   Misma técnica que .tiktok-beam pero con los colores del Mundial
+   (lima → teal → morado). Marca los partidos del día más próximo. */
+.bracket-beam {
+  background: conic-gradient(from var(--ttk-angle),
+    #A4EB33 0deg,
+    #48E5C2 22deg,
+    rgba(72, 229, 194, 0.14) 70deg,
+    rgba(72, 229, 194, 0.14) 290deg,
+    #7A28CB 335deg,
+    #A4EB33 360deg);
+  animation: ttk-orbit 3.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bracket-beam { animation: none; }
+}
+
+/* ── Tema claro: los neutros blancos del beam se pierden contra el fondo claro.
+   Aquí se invierten (la franja usa colores fuertes y base oscura tenue) para que
+   se note. Solo cambia el gradiente; la animación de la clase base sigue corriendo. */
+.light .tiktok-beam {
+  background: conic-gradient(from var(--ttk-angle),
+    #FE2C55 0deg,
+    #7c3aed 16deg,
+    rgba(0, 0, 0, 0.16) 52deg,
+    rgba(0, 0, 0, 0.16) 308deg,
+    #0891b2 344deg,
+    #FE2C55 360deg);
+}
+.light .bracket-beam {
+  background: conic-gradient(from var(--ttk-angle),
+    #65a30d 0deg,
+    #0d9488 22deg,
+    rgba(0, 0, 0, 0.16) 70deg,
+    rgba(0, 0, 0, 0.16) 290deg,
+    #7A28CB 335deg,
+    #65a30d 360deg);
+}

@@ -65,13 +65,13 @@ const MATCH_DATES: Record<number, string> = {
   69:'2026-06-23T15:00:00-05:00', 70:'2026-06-23T18:00:00-05:00',
   71:'2026-06-27T16:00:00-05:00', 72:'2026-06-27T16:00:00-05:00',
   // ── Fase eliminatoria (73-104) — sync con src/data/knockoutMatches.ts ──
-  73:'2026-06-28T12:00:00-05:00', 74:'2026-06-29T16:30:00-05:00',
-  75:'2026-06-29T19:00:00-05:00', 76:'2026-06-29T12:00:00-05:00',
-  77:'2026-06-30T17:00:00-05:00', 78:'2026-06-30T12:00:00-05:00',
-  79:'2026-06-30T19:00:00-05:00', 80:'2026-07-01T12:00:00-05:00',
-  81:'2026-07-01T17:00:00-05:00', 82:'2026-07-01T13:00:00-05:00',
-  83:'2026-07-02T19:00:00-05:00', 84:'2026-07-02T12:00:00-05:00',
-  85:'2026-07-02T20:00:00-05:00', 86:'2026-07-03T18:00:00-05:00',
+  73:'2026-06-28T14:00:00-05:00', 74:'2026-06-29T15:30:00-05:00',
+  75:'2026-06-29T20:00:00-05:00', 76:'2026-06-29T12:00:00-05:00',
+  77:'2026-06-30T16:00:00-05:00', 78:'2026-06-30T12:00:00-05:00',
+  79:'2026-06-30T20:00:00-05:00', 80:'2026-07-01T11:00:00-05:00',
+  81:'2026-07-01T19:00:00-05:00', 82:'2026-07-01T15:00:00-05:00',
+  83:'2026-07-02T18:00:00-05:00', 84:'2026-07-02T14:00:00-05:00',
+  85:'2026-07-02T22:00:00-05:00', 86:'2026-07-03T17:00:00-05:00',
   87:'2026-07-03T20:30:00-05:00', 88:'2026-07-03T13:00:00-05:00',
   89:'2026-07-04T17:00:00-05:00', 90:'2026-07-04T12:00:00-05:00',
   91:'2026-07-05T16:00:00-05:00', 92:'2026-07-05T18:00:00-05:00',
@@ -615,6 +615,11 @@ const SPORTSDB_EVENT_IDS: Record<number, string> = {
   41:"2391773", 42:"2391774", 47:"2391772", 48:"2391776",
   53:"2391775", 54:"2461119", 59:"2391777", 60:"2391780",
   65:"2391778", 66:"2461120", 71:"2391781", 72:"2391779",
+  // ── 16avos (Round of 32) — 16/16 verificados contra eventsround.php?r=32 (jun-2026) ──
+  73:"2499618", 74:"2502846", 75:"2499836", 76:"2499835",
+  77:"2502847", 78:"2502605", 79:"2503390", 80:"2503391",
+  81:"2499837", 82:"2503392", 83:"2503393", 84:"2503636",
+  85:"2503635", 86:"2502849", 87:"2503394", 88:"2502848",
 };
 
 // Ventana en minutos en la que consideramos un partido "potencialmente en vivo"
@@ -644,21 +649,47 @@ function sdbUtcDate(offsetDays = 0): string {
 // eventsday.php. Esto garantiza cobertura de la Jornada 3 (6 partidos/día
 // simultáneos) y de las eliminatorias. Fallback: eventsday ayer/hoy/mañana.
 // Lo encontrado se persiste en SPORTSDB_EVENT_IDS por la vida del isolate.
-async function bootstrapMissingEventIds(matchIds: number[]): Promise<void> {
+// koMap (opcional): equipos REALES ya confirmados de la fase eliminatoria
+// (match_id 73-104 → {team1, team2}). Permite descubrir el idEvent de los
+// partidos de eliminatorias, que no existen en GROUP_MATCHES_DATA. Sin esto,
+// las eliminatorias nunca obtienen idEvent y el poller las salta.
+async function bootstrapMissingEventIds(
+  matchIds: number[],
+  koMap?: Record<number, { team1: string; team2: string }>
+): Promise<void> {
   const missing = matchIds.filter(id => !SPORTSDB_EVENT_IDS[id]);
   if (!missing.length) return;
 
   const discovered: any[] = [];
 
-  // Primario: temporada completa (sin límite diario).
+  // Primario: temporada completa (sin límite diario). OJO: con la clave gratuita
+  // eventsseason solo devuelve la Jornada 1 (~15 eventos), así que NO basta para
+  // J2/J3 ni eliminatorias. Se complementa abajo.
   try {
     const res  = await fetch(`${SPORTSDB_API}/eventsseason.php?id=${SPORTSDB_LID}&s=2026`);
     const json = await res.json();
     discovered.push(...(json.events || json.event || []));
-  } catch { /* ignore, cae al fallback */ }
+  } catch { /* ignore */ }
 
-  // Fallback: si la temporada no devolvió nada, usar eventsday (limitado a 3/día).
-  if (!discovered.length) {
+  // Eliminatorias: eventsround.php trae TODA la ronda en una sola llamada, SIN el
+  // límite de 3/día de eventsday. r=32=16avos (verificado). Octavos/cuartos/semis
+  // usan 16/8/4 (aún sin publicar al jun-2026). OJO: r=1,2,3 son las jornadas de
+  // GRUPOS, no KO — por eso NO se incluyen aquí. La final y el 3er lugar tienen
+  // número incierto pero los cubre eventsday abajo (1 partido/día). Solo se consulta
+  // si faltan partidos de KO (≥73); el match real se hace por nombre contra koMap.
+  if (missing.some(id => id >= 73)) {
+    for (const r of [32, 16, 8, 4]) {
+      try {
+        const res  = await fetch(`${SPORTSDB_API}/eventsround.php?id=${SPORTSDB_LID}&r=${r}&s=2026`);
+        const json = await res.json();
+        discovered.push(...(json.events || json.event || []));
+      } catch { /* ignore */ }
+    }
+  }
+
+  // Respaldo final: eventsday de las fechas en ventana (limitado a 3/día, pero en
+  // días de KO hay ≤3 partidos). Cubre cualquier evento que eventsround no traiga.
+  {
     const days = [sdbUtcDate(-1), sdbUtcDate(0), sdbUtcDate(1)];
     for (const d of days) {
       try {
@@ -677,10 +708,26 @@ async function bootstrapMissingEventIds(matchIds: number[]): Promise<void> {
     const awayEn = ev.strAwayTeam || '';
     for (const mid of missing) {
       if (SPORTSDB_EVENT_IDS[mid]) continue;
-      const gm = findGroupMatchByTeams(homeEn, awayEn);
-      if (gm && gm.matchId === mid) {
-        SPORTSDB_EVENT_IDS[mid] = ev.idEvent;
-        console.log(`[bootstrap] matchId=${mid} → idEvent=${ev.idEvent} (${homeEn} vs ${awayEn})`);
+      if (mid < 73) {
+        // Fase de grupos: emparejamientos conocidos en GROUP_MATCHES_DATA.
+        const gm = findGroupMatchByTeams(homeEn, awayEn);
+        if (gm && gm.matchId === mid) {
+          SPORTSDB_EVENT_IDS[mid] = ev.idEvent;
+          console.log(`[bootstrap] matchId=${mid} → idEvent=${ev.idEvent} (${homeEn} vs ${awayEn})`);
+        }
+      } else if (koMap?.[mid]) {
+        // Eliminatorias: matchear contra los equipos reales ya confirmados.
+        const t1 = koMap[mid].team1, t2 = koMap[mid].team2;
+        // Saltar slots vacíos o placeholders ("W74", "1ºA"): nmatch("",x) daría
+        // true porque todo string incluye "", lo que causaría falsos positivos.
+        if (!t1 || !t2 || /^[WL]\d|^[1-4]º/.test(t1) || /^[WL]\d|^[1-4]º/.test(t2)) continue;
+        const t1En = DICT_ES_EN[t1] || t1;
+        const t2En = DICT_ES_EN[t2] || t2;
+        if ((nmatch(homeEn, t1En) && nmatch(awayEn, t2En)) ||
+            (nmatch(homeEn, t2En) && nmatch(awayEn, t1En))) {
+          SPORTSDB_EVENT_IDS[mid] = ev.idEvent;
+          console.log(`[bootstrap] KO matchId=${mid} → idEvent=${ev.idEvent} (${homeEn} vs ${awayEn})`);
+        }
       }
     }
   }
@@ -755,16 +802,18 @@ async function pollLiveOnce(leagueIds: string[]): Promise<void> {
   const liveIds = [...new Set([...windowIds, ...dbActiveIds])];
   if (!liveIds.length) return;
 
-  // Rellenar IDs desconocidos antes de procesar (partidos de J2/J3 no hardcodeados)
-  await bootstrapMissingEventIds(liveIds);
-
-  // Cargar equipos de fase eliminatoria una vez (para knockout stage)
+  // Cargar equipos de fase eliminatoria una vez (para knockout stage).
+  // Se construye ANTES del bootstrap para poder descubrir los idEvent de
+  // las eliminatorias matcheando contra los equipos reales confirmados.
   const { data: koRows } = await db.from("knockout_match_teams")
     .select("match_id,team1,team2").gte("match_id", 73);
   const koMap: Record<number, { team1: string; team2: string }> = {};
   (koRows || []).forEach((r: any) => {
     if (!koMap[r.match_id]) koMap[r.match_id] = { team1: r.team1, team2: r.team2 };
   });
+
+  // Rellenar IDs desconocidos antes de procesar (J2/J3 no hardcodeados + eliminatorias)
+  await bootstrapMissingEventIds(liveIds, koMap);
 
   for (const matchId of liveIds) {
     const idEvent = SPORTSDB_EVENT_IDS[matchId];

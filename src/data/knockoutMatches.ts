@@ -10,23 +10,23 @@ export interface MInfo {
 }
 
 export const R32_L: MInfo[] = [
-  { id: 74, num: 74, t1: '1ºE', t2: '3º A/B/C/D/F', date: '29 Jun', time: '16:30', stadium: 'Gillette', city: 'BOS' },
-  { id: 77, num: 77, t1: '1ºI', t2: '3º C/D/F/G/H', date: '30 Jun', time: '17:00', stadium: 'MetLife', city: 'NY' },
-  { id: 73, num: 73, t1: '2ºA', t2: '2ºB',      date: '28 Jun', time: '12:00', stadium: 'SoFi', city: 'LA' },
-  { id: 75, num: 75, t1: '1ºF', t2: '2ºC',      date: '29 Jun', time: '19:00', stadium: 'BBVA', city: 'MTY' },
-  { id: 83, num: 83, t1: '2ºK', t2: '2ºL',      date: '2 Jul',  time: '19:00', stadium: 'BMO', city: 'TOR' },
-  { id: 84, num: 84, t1: '1ºH', t2: '2ºJ',      date: '2 Jul',  time: '12:00', stadium: 'SoFi', city: 'LA' },
-  { id: 81, num: 81, t1: '1ºD', t2: '3º B/E/F/I/J', date: '1 Jul',  time: '17:00', stadium: 'Levi\'s', city: 'SF' },
-  { id: 82, num: 82, t1: '1ºG', t2: '3º A/E/H/I/J', date: '1 Jul',  time: '13:00', stadium: 'Lumen', city: 'SEA' },
+  { id: 74, num: 74, t1: '1ºE', t2: '3º A/B/C/D/F', date: '29 Jun', time: '15:30', stadium: 'Gillette', city: 'BOS' },
+  { id: 77, num: 77, t1: '1ºI', t2: '3º C/D/F/G/H', date: '30 Jun', time: '16:00', stadium: 'MetLife', city: 'NY' },
+  { id: 73, num: 73, t1: '2ºA', t2: '2ºB',      date: '28 Jun', time: '14:00', stadium: 'SoFi', city: 'LA' },
+  { id: 75, num: 75, t1: '1ºF', t2: '2ºC',      date: '29 Jun', time: '20:00', stadium: 'BBVA', city: 'MTY' },
+  { id: 83, num: 83, t1: '2ºK', t2: '2ºL',      date: '2 Jul',  time: '18:00', stadium: 'BMO', city: 'TOR' },
+  { id: 84, num: 84, t1: '1ºH', t2: '2ºJ',      date: '2 Jul',  time: '14:00', stadium: 'SoFi', city: 'LA' },
+  { id: 81, num: 81, t1: '1ºD', t2: '3º B/E/F/I/J', date: '1 Jul',  time: '19:00', stadium: 'Levi\'s', city: 'SF' },
+  { id: 82, num: 82, t1: '1ºG', t2: '3º A/E/H/I/J', date: '1 Jul',  time: '15:00', stadium: 'Lumen', city: 'SEA' },
 ];
 export const R32_R: MInfo[] = [
   { id: 76, num: 76, t1: '1ºC', t2: '2ºF',      date: '29 Jun', time: '12:00', stadium: 'NRG', city: 'HOU' },
   { id: 78, num: 78, t1: '2ºE', t2: '2ºI',      date: '30 Jun', time: '12:00', stadium: 'AT&T', city: 'DAL' },
-  { id: 79, num: 79, t1: '1ºA', t2: '3º C/E/F/H/I', date: '30 Jun', time: '19:00', stadium: 'Azteca', city: 'CDMX' },
-  { id: 80, num: 80, t1: '1ºL', t2: '3º E/H/I/J/K', date: '1 Jul',  time: '12:00', stadium: 'Mercedes', city: 'ATL' },
-  { id: 86, num: 86, t1: '1ºJ', t2: '2ºH',      date: '3 Jul',  time: '18:00', stadium: 'Hard Rock', city: 'MIA' },
+  { id: 79, num: 79, t1: '1ºA', t2: '3º C/E/F/H/I', date: '30 Jun', time: '20:00', stadium: 'Azteca', city: 'CDMX' },
+  { id: 80, num: 80, t1: '1ºL', t2: '3º E/H/I/J/K', date: '1 Jul',  time: '11:00', stadium: 'Mercedes', city: 'ATL' },
+  { id: 86, num: 86, t1: '1ºJ', t2: '2ºH',      date: '3 Jul',  time: '17:00', stadium: 'Hard Rock', city: 'MIA' },
   { id: 88, num: 88, t1: '2ºD', t2: '2ºG',      date: '3 Jul',  time: '13:00', stadium: 'AT&T', city: 'DAL' },
-  { id: 85, num: 85, t1: '1ºB', t2: '3º E/F/G/I/J', date: '2 Jul',  time: '20:00', stadium: 'BC Place', city: 'VAN' },
+  { id: 85, num: 85, t1: '1ºB', t2: '3º E/F/G/I/J', date: '2 Jul',  time: '22:00', stadium: 'BC Place', city: 'VAN' },
   { id: 87, num: 87, t1: '1ºK', t2: '3º D/E/I/J/L', date: '3 Jul',  time: '20:30', stadium: 'Arrowhead', city: 'KC' },
 ];
 export const R16_L: MInfo[] = [

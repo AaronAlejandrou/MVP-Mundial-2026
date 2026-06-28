@@ -12,10 +12,18 @@ interface LayoutProps {
   isAdmin?: boolean;
   pendingCount?: number;
   onOpenAdmin?: () => void;
+  showActuBadge?: boolean;
 }
 
-export function Layout({ children, currentView, onViewChange, leagueCode, onLogout, isAdmin, pendingCount = 0, onOpenAdmin }: LayoutProps) {
+export function Layout({ children, currentView, onViewChange, leagueCode, onLogout, isAdmin, pendingCount = 0, onOpenAdmin, showActuBadge = false }: LayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Badge rojo "¡Actu!" que invita a entrar a Eliminatorias. Desaparece al entrar.
+  const actuBadge = showActuBadge && currentView !== 'knockout' ? (
+    <span className="absolute -top-1.5 -right-1.5 z-10 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[8px] font-black leading-none shadow-lg shadow-rose-500/40 animate-pulse pointer-events-none">
+      ¡Actu!
+    </span>
+  ) : null;
 
   return (
     <div className="min-h-screen flex flex-col relative bg-black">
@@ -80,7 +88,7 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
               </button>
               <button
                 onClick={() => onViewChange('knockout')}
-                className={`px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
+                className={`relative px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
                   currentView === 'knockout'
                     ? 'scale-105'
                     : 'hover:scale-105'
@@ -96,6 +104,7 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
                   <span className="hidden xl:inline">Eliminatorias</span>
                   <span className="xl:hidden">Elimis</span>
                 </div>
+                {actuBadge}
               </button>
               <button
                 onClick={() => onViewChange('standings')}
@@ -228,9 +237,7 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
                   onViewChange('knockout');
                   setMenuOpen(false);
                 }}
-                className={`w-full px-4 py-3 rounded-xl font-bold text-sm transition-all text-left ${
-                  currentView === 'knockout' ? '' : ''
-                }`}
+                className={`relative w-full px-4 py-3 rounded-xl font-bold text-sm transition-all text-left`}
                 style={
                   currentView === 'knockout'
                     ? { background: 'var(--gradient-primary)', color: 'white' }
@@ -241,6 +248,7 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
                   <Award className="w-5 h-5" />
                   Eliminatorias
                 </div>
+                {actuBadge}
               </button>
               <button
                 onClick={() => {
@@ -332,7 +340,7 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
 
           <button
             onClick={() => onViewChange('knockout')}
-            className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
+            className="relative flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
             style={
               currentView === 'knockout'
                 ? { background: 'var(--blob-purple)' }
@@ -351,6 +359,7 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
             >
               Elimis
             </span>
+            {actuBadge}
           </button>
 
           <button

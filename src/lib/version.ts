@@ -16,7 +16,7 @@
 
 // Inyectado por Vite (define). Fallback 'dev' cuando se corre sin build.
 declare const __APP_VERSION__: string;
-const RUNNING_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
+export const RUNNING_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
 
 // Evita recargas repetidas dentro de la misma sesión si algo sale mal.
 const RELOAD_GUARD_KEY = 'app_version_reloaded_to';

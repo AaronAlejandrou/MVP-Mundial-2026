@@ -57,11 +57,19 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
   const hasScrolled = useRef(false);
   useEffect(() => {
     if (!predictionsLoaded || hasScrolled.current) return;
-    if (todayRef.current) {
-      todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      hasScrolled.current = true;
-    }
-  }, [predictionsLoaded]);
+    if (!todayRef.current) return;
+    // Esperar al paint: en F5 los partidos suelen montarse DESPUÉS de que
+    // predictionsLoaded se vuelve true, así que dependemos también de matches.length
+    // y hacemos el scroll en el siguiente frame (cuando el grupo de hoy ya existe y
+    // está medido). Antes el efecto corría con todayRef todavía null y no reintentaba.
+    const raf = requestAnimationFrame(() => {
+      if (todayRef.current) {
+        todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        hasScrolled.current = true;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [predictionsLoaded, matches.length]);
 
   const getDateLabel = (dateString: string) => {
     // Apend T12:00:00 to force local time interpretation and prevent UTC midnight backwards shifting
