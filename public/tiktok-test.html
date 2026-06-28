@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test deep-links TikTok</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; background:#0f1116; color:#fff; margin:0; padding:20px; }
+    h1 { font-size:18px; }
+    p { color:#9aa0aa; font-size:14px; line-height:1.5; }
+    .match { margin:18px 0 8px; font-weight:800; color:#7dd3fc; font-size:15px; }
+    a.btn {
+      display:block; margin:10px 0; padding:16px; border-radius:12px;
+      background:#1c1f27; border:1px solid #2c313c; color:#fff;
+      text-decoration:none; font-weight:700; font-size:15px;
+    }
+    a.btn small { display:block; color:#9aa0aa; font-weight:400; font-size:12px; margin-top:4px; word-break:break-all; }
+    .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; background:#7c3aed33; color:#c4b5fd; margin-right:6px;}
+  </style>
+</head>
+<body>
+  <h1>Prueba de deep-links a TikTok</h1>
+  <p>Toca cada botón (en el <b>celular</b>, con TikTok instalado) y anota cuál abre la app <b>en la búsqueda del partido</b> (no en el inicio).</p>
+
+  <div class="match">Colombia vs Portugal</div>
+
+  <a class="btn" href="snssdk1233://search?keyword=Colombia%20vs%20Portugal">
+    <span class="tag">A</span> Esquema search
+    <small>snssdk1233://search?keyword=...</small>
+  </a>
+
+  <a class="btn" href="snssdk1233://search/middle_page?keyword=Colombia%20vs%20Portugal">
+    <span class="tag">B</span> Esquema search/middle_page
+    <small>snssdk1233://search/middle_page?keyword=...</small>
+  </a>
+
+  <a class="btn" href="tiktok://search?q=Colombia%20vs%20Portugal">
+    <span class="tag">C</span> Esquema tiktok://
+    <small>tiktok://search?q=...</small>
+  </a>
+
+  <a class="btn" href="https://www.tiktok.com/tag/ColombiavsPortugal">
+    <span class="tag">D</span> Universal link a hashtag
+    <small>https://www.tiktok.com/tag/ColombiavsPortugal</small>
+  </a>
+
+  <a class="btn" href="https://www.tiktok.com/search?q=Colombia%20vs%20Portugal">
+    <span class="tag">E</span> Universal link a búsqueda (el que abría el inicio)
+    <small>https://www.tiktok.com/search?q=...</small>
+  </a>
+
+  <a class="btn" href="intent://search?q=Colombia%20vs%20Portugal#Intent;scheme=snssdk1233;package=com.zhiliaoapp.musically;end">
+    <span class="tag">F</span> Android intent:// (solo Android)
+    <small>intent://search...package=com.zhiliaoapp.musically</small>
+  </a>
+
+  <p style="margin-top:30px;">Reporta cuál (A–F) cae en la búsqueda del partido. Si varios funcionan, dime el que mejor muestre la tarjeta de stats.</p>
+</body>
+</html>
