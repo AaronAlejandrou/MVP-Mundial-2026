@@ -454,8 +454,10 @@ export default function App() {
     });
   }
 
-  // Mostrar "¡Actu!" si el usuario no ha entrado a Eliminatorias con esta versión.
+  // Mostrar "¡Actu!" SOLO el primer día (lanzamiento). Después no vuelve a aparecer.
   useEffect(() => {
+    const limaToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+    if (limaToday !== '2026-06-28') return; // primer día
     if (localStorage.getItem('polla_elims_seen_version') !== RUNNING_VERSION) setShowActu(true);
   }, []);
   // Al entrar a Eliminatorias se apaga y se recuerda para esta versión.

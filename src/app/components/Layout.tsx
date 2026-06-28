@@ -359,7 +359,11 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
             >
               Elimis
             </span>
-            {actuBadge}
+            {showActuBadge && currentView !== 'knockout' && (
+              <span className="absolute -top-1 left-1/2 -translate-x-1/2 z-10 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[8px] font-black leading-none shadow-lg shadow-rose-500/40 animate-pulse pointer-events-none whitespace-nowrap">
+                ¡Actu!
+              </span>
+            )}
           </button>
 
           <button

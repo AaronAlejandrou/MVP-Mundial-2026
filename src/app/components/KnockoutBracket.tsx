@@ -97,11 +97,15 @@ function BracketMatch({ m, resolveTeam, isFinal, isThird, onClick, result, predi
     </div>
   );
 
+  // El badge "¡Click!" solo se muestra el primer día (lanzamiento); el beam se queda.
+  const isBadgeDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date()) === '2026-06-28';
   return highlighted ? (
     <div className="bracket-beam relative rounded-lg p-[2px] w-full">
-      <span className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[8px] font-black leading-none shadow-lg shadow-rose-500/40 animate-bounce pointer-events-none">
-        ¡Click!
-      </span>
+      {isBadgeDay && (
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[8px] font-black leading-none shadow-lg shadow-rose-500/40 animate-bounce pointer-events-none">
+          ¡Click!
+        </span>
+      )}
       {card}
     </div>
   ) : card;
