@@ -24,9 +24,10 @@ interface LeaderboardProps {
   currentUserId?: string;
   currentLeague?: League;
   accessToken?: string;
+  knockoutTeams?: Record<number, { team1: string; team2: string }>;
 }
 
-export function Leaderboard({ players, currentUserId, currentLeague, accessToken }: LeaderboardProps) {
+export function Leaderboard({ players, currentUserId, currentLeague, accessToken, knockoutTeams }: LeaderboardProps) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardPlayer | null>(null);
@@ -71,6 +72,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
           leagueId={currentLeague.id}
           accessToken={accessToken}
           currentUserId={currentUserId}
+          knockoutTeams={knockoutTeams}
           onClose={() => setSelectedPlayer(null)}
         />
       )}

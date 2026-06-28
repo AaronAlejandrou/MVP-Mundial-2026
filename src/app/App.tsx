@@ -635,7 +635,7 @@ export default function App() {
         )}
         {currentView === 'leaderboard' && (
           <div className="max-w-3xl mx-auto">
-            <Leaderboard players={leaderboard} currentUserId={currentUser.id} currentLeague={currentLeague} accessToken={accessToken} />
+            <Leaderboard players={leaderboard} currentUserId={currentUser.id} currentLeague={currentLeague} accessToken={accessToken} knockoutTeams={knockoutTeams} />
           </div>
         )}
       </Layout>

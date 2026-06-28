@@ -5,6 +5,7 @@ import { format, isToday, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CountryFlag } from './CountryFlag';
 import { GROUP_STAGE_MATCHES } from '../../data/groupStageMatches';
+import { getResolvedKnockoutMatches } from '../../data/knockoutMatches';
 import { apiFetch } from '../../lib/api';
 
 interface PlayerPrediction {
@@ -58,10 +59,11 @@ interface PlayerPredictionsModalProps {
   leagueId: string;
   accessToken: string;
   currentUserId?: string;
+  knockoutTeams?: Record<number, { team1: string; team2: string }>;
   onClose: () => void;
 }
 
-export function PlayerPredictionsModal({ player, leagueId, accessToken, currentUserId, onClose }: PlayerPredictionsModalProps) {
+export function PlayerPredictionsModal({ player, leagueId, accessToken, currentUserId, knockoutTeams, onClose }: PlayerPredictionsModalProps) {
   const [predictions, setPredictions] = useState<PlayerPrediction[]>([]);
   const [loading, setLoading] = useState(true);
   const todayRef = useRef<HTMLDivElement>(null);
@@ -95,15 +97,16 @@ export function PlayerPredictionsModal({ player, leagueId, accessToken, currentU
 
   // Build enriched predictions joined with match data
   const enriched = useMemo(() => {
+    const allMatches = [...GROUP_STAGE_MATCHES, ...getResolvedKnockoutMatches(knockoutTeams ?? {})];
     return predictions
       .map(p => {
-        const match = GROUP_STAGE_MATCHES.find(m => m.id === p.matchId);
+        const match = allMatches.find(m => m.id === p.matchId);
         if (!match) return null;
         return { ...p, match };
       })
       .filter(Boolean)
       .sort((a: any, b: any) => new Date(a.match.fecha_hora).getTime() - new Date(b.match.fecha_hora).getTime());
-  }, [predictions]);
+  }, [predictions, knockoutTeams]);
 
   // Group by local date
   const grouped = useMemo(() => {
