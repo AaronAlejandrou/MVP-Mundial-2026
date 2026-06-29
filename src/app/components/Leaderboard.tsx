@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, Trophy, ChevronRight, Share2, Check, Users, FileText } from 'lucide-react';
+import { TrendingUp, TrendingDown, Trophy, ChevronRight, Share2, Check, Users, FileText, Crown, Medal } from 'lucide-react';
 import { TermsModal } from './TermsModal';
 import { PlayerPredictionsModal } from './PlayerPredictionsModal';
 
@@ -60,7 +60,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
   };
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto py-8 sm:py-12 px-4 sm:px-6">
+    <div className="relative w-full max-w-4xl mx-auto py-4 sm:py-12 px-4 sm:px-6">
 
       {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
 
@@ -77,16 +77,16 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
       {/* Main content starts directly */}
 
       {/* Cabecera minimalista y Premium */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12 gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-5 sm:mb-12 gap-3 sm:gap-6">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2 text-primary/80">
-            <Trophy className="w-5 h-5" />
-            <span className="font-bold uppercase tracking-widest text-xs">Ranking Oficial</span>
+          <div className="flex items-center gap-2 mb-1 text-primary/80">
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="font-bold uppercase tracking-widest text-[11px] sm:text-xs">Ranking Oficial</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter text-foreground leading-tight">
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter text-foreground leading-tight">
             {currentLeague?.nombre || "Cargando Liga..."}
           </h2>
-          <div className="flex items-center gap-4 mt-4">
+          <div className="flex items-center gap-2 sm:gap-4 mt-2.5 sm:mt-4">
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-lg text-muted-foreground font-medium text-xs sm:text-sm">
               <Users className="w-4 h-4" />
               <span>{sortedPlayers.length} competidores</span>
@@ -103,35 +103,38 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
         
         {/* Botones Invitar + Bases */}
         {(currentLeague?.invitationCode || currentLeague?.codigo_invitacion) && (
-          <div className="flex-shrink-0 flex flex-col items-end gap-2">
-            <button
-              onClick={() => setShowTerms(true)}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:scale-105 border border-border/60"
-            >
-              <FileText className="w-4 h-4" />
-              Ver Bases
-            </button>
-            <button
-              onClick={copyLink}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm ${
-                copiedLink
-                  ? 'bg-emerald-500 text-white shadow-emerald-500/20 scale-105'
-                  : 'bg-primary text-primary-foreground hover:scale-105 hover:shadow-primary/20 shadow-lg'
-              }`}
-            >
-              {copiedLink ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  ¡Enlace copiado!
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-4 h-4" />
-                  Invitar Amigos
-                </>
-              )}
-            </button>
-            <span className="text-xs text-muted-foreground font-medium mr-1">
+          <div className="flex-shrink-0 w-full sm:w-auto flex flex-col gap-2 items-stretch sm:items-end">
+            {/* En móvil los dos botones van horizontales (lado a lado); en desktop apilados. */}
+            <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => setShowTerms(true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:scale-105 border border-border/60"
+              >
+                <FileText className="w-4 h-4 flex-shrink-0" />
+                Ver Bases
+              </button>
+              <button
+                onClick={copyLink}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm ${
+                  copiedLink
+                    ? 'bg-emerald-500 text-white shadow-emerald-500/20 scale-105'
+                    : 'bg-primary text-primary-foreground hover:scale-105 hover:shadow-primary/20 shadow-lg'
+                }`}
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="w-4 h-4 flex-shrink-0" />
+                    ¡Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-4 h-4 flex-shrink-0" />
+                    Invitar<span className="hidden sm:inline">&nbsp;Amigos</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <span className="text-xs text-muted-foreground font-medium text-center sm:text-right sm:mr-1">
               Código: <span className="font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded-md border border-border">{currentLeague.invitationCode || currentLeague.codigo_invitacion}</span>
             </span>
           </div>
@@ -144,31 +147,42 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
         const first = Math.round(pool * 0.70);
         const second = Math.round(pool * 0.30);
         return (
-          <div className="mb-6 sm:mb-8 relative overflow-hidden rounded-2xl border border-amber-500/25 bg-card/80 dark:bg-gradient-to-r dark:from-amber-500/8 dark:via-card/60 dark:to-primary/8 backdrop-blur-xl p-4 sm:p-5 shadow-[0_4px_24px_rgba(245,158,11,0.08)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="mb-4 sm:mb-8 relative overflow-hidden rounded-2xl border border-amber-500/25 bg-card/80 dark:bg-gradient-to-r dark:from-amber-500/8 dark:via-card/60 dark:to-primary/8 backdrop-blur-xl p-3.5 sm:p-5 shadow-[0_4px_24px_rgba(245,158,11,0.08)]">
+            <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
               {/* Izquierda: total */}
-              <div className="flex flex-col justify-center">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-1">Premio Acumulado</p>
-                <p className="text-5xl sm:text-6xl font-black tracking-tighter leading-none mt-1">
+              <div className="flex flex-col justify-center min-w-0">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-500 mb-0.5 sm:mb-1">Premio Acumulado</p>
+                <p className="text-[2.5rem] sm:text-6xl font-black tracking-tighter leading-none">
                   <span className="text-foreground">S/ </span>
                   <span className="text-amber-500 dark:text-amber-400">{pool.toLocaleString('es-PE')}</span>
                 </p>
               </div>
-              {/* Derecha: desglose */}
-              <div className="flex gap-2 sm:flex-col sm:gap-2 sm:items-end">
-                <div className="flex-1 sm:flex-none flex sm:flex-row-reverse items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25">
-                  <div className="text-right">
-                    <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-none">S/ {first.toLocaleString('es-PE')}</p>
-                    <p className="text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-wider mt-0.5">1.er Puesto · 70%</p>
+              {/* Derecha: desglose — en móvil apilado a ancho completo (medalla izq.,
+                  monto/label a la derecha, sin partir texto); en desktop igual que antes. */}
+              <div className="flex flex-col gap-1.5 flex-shrink-0 sm:gap-2 sm:items-end">
+                <div className="flex items-center gap-1.5 sm:gap-3 px-2 py-1 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/25 sm:flex-row-reverse">
+                  <span className="flex-shrink-0 w-6 h-6 sm:w-9 sm:h-9 rounded-md sm:rounded-xl bg-amber-500/15 flex items-center justify-center">
+                    <Crown className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-amber-500" fill="currentColor" fillOpacity={0.25} strokeWidth={2} />
+                  </span>
+                  <div className="sm:text-right">
+                    <p className="text-sm sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-none whitespace-nowrap">S/ {first.toLocaleString('es-PE')}</p>
+                    <p className="text-[8px] sm:text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-wider mt-0.5 whitespace-nowrap">
+                      <span className="sm:hidden">70%</span>
+                      <span className="hidden sm:inline">1.er Puesto · 70%</span>
+                    </p>
                   </div>
-                  <span className="text-2xl leading-none">🥇</span>
                 </div>
-                <div className="flex-1 sm:flex-none flex sm:flex-row-reverse items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-400/10 border border-slate-400/25">
-                  <div className="text-right">
-                    <p className="text-xl sm:text-2xl font-black text-slate-600 dark:text-slate-300 leading-none">S/ {second.toLocaleString('es-PE')}</p>
-                    <p className="text-[10px] font-bold text-slate-500/70 uppercase tracking-wider mt-0.5">2.do Puesto · 30%</p>
+                <div className="flex items-center gap-1.5 sm:gap-3 px-2 py-1 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl bg-slate-400/10 border border-slate-400/25 sm:flex-row-reverse">
+                  <span className="flex-shrink-0 w-6 h-6 sm:w-9 sm:h-9 rounded-md sm:rounded-xl bg-slate-400/15 flex items-center justify-center">
+                    <Medal className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-slate-400" strokeWidth={2.25} />
+                  </span>
+                  <div className="sm:text-right">
+                    <p className="text-sm sm:text-2xl font-black text-slate-600 dark:text-slate-300 leading-none whitespace-nowrap">S/ {second.toLocaleString('es-PE')}</p>
+                    <p className="text-[8px] sm:text-[10px] font-bold text-slate-500/70 uppercase tracking-wider mt-0.5 whitespace-nowrap">
+                      <span className="sm:hidden">30%</span>
+                      <span className="hidden sm:inline">2.do Puesto · 30%</span>
+                    </p>
                   </div>
-                  <span className="text-2xl leading-none">🥈</span>
                 </div>
               </div>
             </div>
@@ -214,12 +228,12 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
                 )}
 
                 {/* Indicador de Posición */}
-                <div className={`w-12 sm:w-16 flex-shrink-0 flex justify-center items-center font-score text-3xl sm:text-4xl font-black tracking-tighter ${rankColor}`}>
+                <div className={`w-9 sm:w-16 flex-shrink-0 flex justify-center items-center font-score text-2xl sm:text-4xl font-black tracking-tighter ${rankColor}`}>
                   {position}
                 </div>
 
-                {/* Contenedor Avatar */}
-                <div className="relative mr-4 sm:mr-6 flex-shrink-0">
+                {/* Contenedor Avatar — oculto en móvil (no aporta y roba espacio al nombre) */}
+                <div className="relative hidden sm:block sm:mr-6 flex-shrink-0">
                   {player.avatar_url ? (
                     <img
                       src={player.avatar_url}
@@ -241,7 +255,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
                 </div>
 
                 {/* Información Principal */}
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <div className="flex-1 min-w-0 flex flex-col justify-center ml-3 sm:ml-0">
                   <div className="flex items-center gap-3">
                     <h3 className={`font-bold text-lg sm:text-xl truncate tracking-tight ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
                       {player.nombre}
@@ -280,8 +294,8 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
                 )}
 
                 {/* Puntaje */}
-                <div className="flex-shrink-0 text-right ml-4 flex flex-col justify-center items-end">
-                  <div className={`font-score text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-none ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
+                <div className="flex-shrink-0 text-right ml-2 sm:ml-4 flex flex-col justify-center items-end">
+                  <div className={`font-score text-2xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-none ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
                     {player.puntaje_total}
                   </div>
                   <div className="text-[10px] sm:text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mt-1">
