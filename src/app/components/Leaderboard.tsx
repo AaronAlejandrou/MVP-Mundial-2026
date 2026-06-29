@@ -221,17 +221,32 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
                 key={player.id}
                 onClick={() => { setSelectedPlayer(player); if (!seenRanking) { localStorage.setItem('polla_seen_ranking', '1'); setSeenRanking(true); } }}
                 className={`group relative flex items-center p-4 sm:p-5 transition-all duration-500 ease-out rounded-3xl cursor-pointer ${
-                  isCurrentUser
+                  isTop1
+                    ? 'rank-card-gold bg-gradient-to-br from-amber-500/15 via-card/70 to-amber-400/5 backdrop-blur-2xl border-2 border-amber-400/40 hover:-translate-y-0.5 hover:scale-[1.015] z-10'
+                    : isTop2
+                    ? 'rank-card-silver bg-gradient-to-br from-slate-400/15 via-card/70 to-slate-300/5 backdrop-blur-2xl border-2 border-slate-300/40 hover:-translate-y-0.5 hover:scale-[1.015] z-10'
+                    : isCurrentUser
                     ? 'bg-card/80 backdrop-blur-2xl border-2 border-primary/20 shadow-[0_8px_30px_rgba(0,0,0,0.08)] scale-[1.01] z-10'
                     : 'bg-card/40 backdrop-blur-xl border border-border/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:bg-card/70 hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:scale-[1.005]'
                 }`}
               >
                 {!seenRanking && (
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse pointer-events-none" />
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse pointer-events-none z-20" />
+                )}
+
+                {/* Marca de agua decorativa (detrás del contenido) para 1er/2do lugar */}
+                {(isTop1 || isTop2) && (
+                  <div className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 pointer-events-none rotate-12 opacity-[0.06] -z-10">
+                    {isTop1
+                      ? <Crown className="w-20 h-20 sm:w-28 sm:h-28 text-amber-400" fill="currentColor" />
+                      : <Medal className="w-20 h-20 sm:w-28 sm:h-28 text-slate-300" fill="currentColor" />}
+                  </div>
                 )}
 
                 {/* Indicador de Posición */}
-                <div className={`w-9 sm:w-16 flex-shrink-0 flex justify-center items-center font-score text-2xl sm:text-4xl font-black tracking-tighter ${rankColor}`}>
+                <div className={`w-9 sm:w-16 flex-shrink-0 flex justify-center items-center font-score text-2xl sm:text-4xl font-black tracking-tighter ${rankColor} ${
+                  isTop1 ? 'drop-shadow-[0_0_10px_rgba(245,158,11,0.55)]' : isTop2 ? 'drop-shadow-[0_0_9px_rgba(148,163,184,0.5)]' : ''
+                }`}>
                   {position}
                 </div>
 
@@ -310,6 +325,9 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
                 <div className="hidden sm:flex ml-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <ChevronRight className="w-6 h-6 text-muted-foreground/30" />
                 </div>
+
+                {/* Barrido de luz (shine) que cruza la card en hover — solo 1er/2do lugar */}
+                {(isTop1 || isTop2) && <span className="rank-shine" aria-hidden="true" />}
               </div>
             );
           })
