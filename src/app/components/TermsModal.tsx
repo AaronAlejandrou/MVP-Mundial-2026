@@ -2,6 +2,7 @@ import { X, Trophy, Clock, Users, Award, Shield, FileText, ScrollText } from 'lu
 
 interface TermsProps {
   onClose: () => void;
+  entryFee?: number;
 }
 
 /* ─── Shared content blocks ─────────────────────────────────────────────── */
@@ -65,7 +66,7 @@ function TermsLeft() {
   );
 }
 
-function TermsRight() {
+function TermsRight({ entryFee = 20 }: { entryFee?: number }) {
   return (
     <div className="space-y-4">
       {/* 3 */}
@@ -108,7 +109,7 @@ function TermsRight() {
           <h3 className="font-bold text-foreground text-sm">5. Premios y Transparencia</h3>
         </div>
         <div className="pl-8 space-y-2">
-          <p className="text-xs text-muted-foreground">Inscripción: <span className="font-bold text-foreground">20 soles</span> por participante. El fondo acumulado se reparte:</p>
+          <p className="text-xs text-muted-foreground">Inscripción: <span className="font-bold text-foreground">{entryFee} soles</span> por participante. El fondo acumulado se reparte:</p>
           <div className="flex gap-2">
             <div className="flex-1 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
               <div className="text-base font-black text-amber-500">70%</div>
@@ -130,7 +131,7 @@ function TermsRight() {
 }
 
 /* ─── Modal: Ranking (2 cols, sin scroll, offset sobre navbar) ─────────── */
-export function TermsModal({ onClose }: TermsProps) {
+export function TermsModal({ onClose, entryFee }: TermsProps) {
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-16 sm:pt-20 pb-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -153,7 +154,7 @@ export function TermsModal({ onClose }: TermsProps) {
         {/* Content — scrollable si no cabe */}
         <div className="overflow-y-auto scrollbar-hide flex-1 p-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
           <TermsLeft />
-          <TermsRight />
+          <TermsRight entryFee={entryFee} />
         </div>
         {/* Footer siempre visible */}
         <div className="px-5 pb-4 pt-3 border-t border-border/30 flex-shrink-0">
@@ -171,7 +172,7 @@ export function TermsModal({ onClose }: TermsProps) {
 }
 
 /* ─── Drawer: usado si en algún punto se necesita overlay lateral ─────── */
-export function TermsDrawer({ onClose }: TermsProps) {
+export function TermsDrawer({ onClose, entryFee }: TermsProps) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -193,7 +194,7 @@ export function TermsDrawer({ onClose }: TermsProps) {
         <div className="flex-1 overflow-y-auto scrollbar-hide px-5 py-4 space-y-4">
           <TermsLeft />
           <div className="border-t border-border/30" />
-          <TermsRight />
+          <TermsRight entryFee={entryFee} />
         </div>
         <div className="px-5 pb-5 pt-3 border-t border-border/40 flex-shrink-0">
           <button

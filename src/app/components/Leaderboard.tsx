@@ -24,9 +24,10 @@ interface LeaderboardProps {
   currentUserId?: string;
   currentLeague?: League;
   accessToken?: string;
+  knockoutTeams?: Record<number, { team1: string; team2: string }>;
 }
 
-export function Leaderboard({ players, currentUserId, currentLeague, accessToken }: LeaderboardProps) {
+export function Leaderboard({ players, currentUserId, currentLeague, accessToken, knockoutTeams }: LeaderboardProps) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardPlayer | null>(null);
@@ -35,6 +36,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
     if (b.puntaje_total !== a.puntaje_total) return b.puntaje_total - a.puntaje_total;
     return (b.marcadores_exactos ?? 0) - (a.marcadores_exactos ?? 0);
   });
+  const entryFee = currentLeague?.id === 'b4e8efe1-6121-4b5e-a9b4-449572b79644' ? 50 : 20;
 
   const getPositionChange = (currentPos: number, player: LeaderboardPlayer) => {
     if (!player.posicion_anterior) return null;
@@ -62,7 +64,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
   return (
     <div className="relative w-full max-w-4xl mx-auto py-4 sm:py-12 px-4 sm:px-6">
 
-      {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+      {showTerms && <TermsModal onClose={() => setShowTerms(false)} entryFee={entryFee} />}
 
       {selectedPlayer && currentLeague && accessToken && (
         <PlayerPredictionsModal
@@ -70,6 +72,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
           leagueId={currentLeague.id}
           accessToken={accessToken}
           currentUserId={currentUserId}
+          knockoutTeams={knockoutTeams}
           onClose={() => setSelectedPlayer(null)}
         />
       )}
@@ -143,7 +146,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
 
       {/* Premio acumulado */}
       {sortedPlayers.length > 0 && (() => {
-        const pool = sortedPlayers.length * 20;
+        const pool = sortedPlayers.length * entryFee;
         const first = Math.round(pool * 0.70);
         const second = Math.round(pool * 0.30);
         return (
