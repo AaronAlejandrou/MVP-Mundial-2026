@@ -34,8 +34,24 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
         <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px]" />
       </div>
 
-      {/* Top Navbar */}
-      <nav className="sticky top-0 z-50 bg-background/20 backdrop-blur-2xl border-b border-border/50 shadow-md" style={{ borderColor: 'var(--primary)' }}>
+      {/* Controles flotantes (solo mobile): reemplazan al header para no gastar espacio.
+          La navegación ya vive en el bottom nav; aquí solo quedan tema + salir. */}
+      <div className="md:hidden fixed top-2 right-2 z-50 flex items-center gap-0.5 rounded-full bg-background/60 backdrop-blur-xl border border-border/60 shadow-lg px-1">
+        <ThemeToggle />
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+            className="w-10 h-10 flex items-center justify-center rounded-xl text-destructive hover:bg-destructive/10 transition-all"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Top Navbar (solo desktop; en mobile se reemplaza por los controles flotantes) */}
+      <nav className="hidden md:block sticky top-0 z-50 bg-background/20 backdrop-blur-2xl border-b border-border/50 shadow-md" style={{ borderColor: 'var(--primary)' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Logo */}

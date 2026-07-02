@@ -86,8 +86,10 @@ const MATCH_DATES: Record<number, string> = {
 function isMatchLocked(matchId: number): boolean {
   const dateStr = MATCH_DATES[matchId];
   if (!dateStr) return true;
-  const diffMin = (new Date(dateStr).getTime() - Date.now()) / 60000;
-  return diffMin <= 25;
+  // Cierre exacto al inicio del partido (T-0). Se acepta el pronóstico hasta el
+  // último milisegundo antes del kickoff. El "1 minuto antes" es solo un
+  // comunicado a los participantes (colchón de confianza), no una regla del código.
+  return (new Date(dateStr).getTime() - Date.now()) <= 0;
 }
 
 const app = new Hono();

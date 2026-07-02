@@ -382,6 +382,56 @@
   .tiktok-glitch-pink { animation: none; transform: translate(1px, 1px); }
 }
 
+/* ── Botón YouTube: misma técnica que .tiktok-beam, con el rojo de YouTube.
+   Pareja del botón TikTok (uno a cada lado de la tarjeta). Solo en finalizados. */
+.youtube-beam {
+  background: conic-gradient(from var(--ttk-angle),
+    #ffffff 0deg,
+    #FF0000 12deg,
+    rgba(255, 255, 255, 0.12) 48deg,
+    rgba(255, 255, 255, 0.12) 312deg,
+    #FF4E45 348deg,
+    #ffffff 360deg);
+  animation: ttk-orbit 3.2s linear infinite;
+}
+.light .youtube-beam {
+  background: conic-gradient(from var(--ttk-angle),
+    #FF0000 0deg,
+    #b91c1c 16deg,
+    rgba(0, 0, 0, 0.16) 52deg,
+    rgba(0, 0, 0, 0.16) 308deg,
+    #FF4E45 344deg,
+    #FF0000 360deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .youtube-beam { animation: none; }
+}
+
+/* ── Botón flotante "Ir a Hoy / En vivo" ──
+   Distinto del morado del UI para que se note. Glow que "respira" (anillo suave que
+   se expande) en vez de un pulse duro: llamativo pero no molesto. */
+@keyframes jump-fab-glow {
+  0%   { box-shadow: 0 6px 19px -6px var(--fab-shadow), 0 0 0 0 var(--fab-ring); }
+  70%  { box-shadow: 0 6px 19px -6px var(--fab-shadow), 0 0 0 10px rgba(0,0,0,0); }
+  100% { box-shadow: 0 6px 19px -6px var(--fab-shadow), 0 0 0 0 rgba(0,0,0,0); }
+}
+.jump-fab { animation: jump-fab-glow 3.2s ease-out infinite; }
+.jump-fab-today {
+  background: linear-gradient(135deg, #48E5C2 0%, #A4EB33 100%);
+  color: #06281f;
+  --fab-shadow: rgba(72, 229, 194, 0.48);
+  --fab-ring: rgba(164, 235, 51, 0.41);
+}
+.jump-fab-live {
+  background: #f43f5e;
+  color: #ffffff;
+  --fab-shadow: rgba(244, 63, 94, 0.48);
+  --fab-ring: rgba(244, 63, 94, 0.41);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jump-fab { animation: none; box-shadow: 0 6px 19px -6px var(--fab-shadow); }
+}
+
 /* ── Beam para la tarjeta del partido más cercano (vista Eliminatorias) ──
    Misma técnica que .tiktok-beam pero con los colores del Mundial
    (lima → teal → morado). Marca los partidos del día más próximo. */

@@ -25,6 +25,21 @@ interface Match {
   segundo_tiempo_inicio?: string | null;
 }
 
+// Instante (ms epoch) a partir del cual mostramos el botón "Resumen" de YouTube.
+// El resumen no se publica al instante del pitazo: en promedio ~1-2h después.
+// Como el tipo Match no trae timestamp de finalización, aproximamos el fin del
+// partido como kickoff + 2h (90' + entretiempo + descuento) y le sumamos el buffer:
+//   • Resultado decisivo → +1h  (≈ kickoff + 3h)
+//   • Empate en eliminatoria (id ≥ 73) → +2h  (≈ kickoff + 4h): hubo prórroga y
+//     quizá penales, así que el partido REAL dura más y el resumen tarda más.
+//   Los empates de fase de grupos NO van a prórroga → usan el buffer normal (+1h).
+function getResumenShowAt(match: { id: number; fecha_hora: string; goles_a?: number | null; goles_b?: number | null }): number {
+  const isKnockout = match.id >= 73;
+  const isDraw = match.goles_a != null && match.goles_b != null && match.goles_a === match.goles_b;
+  const bufferHours = (isKnockout && isDraw) ? 4 : 3;
+  return new Date(match.fecha_hora).getTime() + bufferHours * 3_600_000;
+}
+
 // Calcula el minuto de juego en vivo. Es 100% client-side y usa instantes
 // absolutos (Date.now() y fechas con offset explícito), por lo que da el MISMO
 // resultado en cualquier zona horaria — no depende de la hora de pared del usuario.
@@ -180,13 +195,32 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     return () => clearTimeout(id);
   }, [match.fecha_hora, match.estado]);
 
+  // Muestra el botón "Resumen" sin necesidad de F5: agenda un re-render exacto en el
+  // instante en que se cumple el buffer post-partido (ver getResumenShowAt).
+  useEffect(() => {
+    if (match.estado !== 'finalizado') return;
+    const msUntil = getResumenShowAt(match) - Date.now();
+    if (msUntil <= 0) return;
+    const id = setTimeout(() => setTick(t => t + 1), msUntil);
+    return () => clearTimeout(id);
+  }, [match.estado, match.id, match.fecha_hora, match.goles_a, match.goles_b]);
+
+  // ¿Ya se puede mostrar el resumen? (finalizado + buffer cumplido). Depende de `tick`
+  // para recomputarse cuando el setTimeout de arriba dispara.
+  const showResumen = useMemo(
+    () => match.estado === 'finalizado' && Date.now() >= getResumenShowAt(match),
+    [match.estado, match.id, match.fecha_hora, match.goles_a, match.goles_b, tick]
+  );
+
   const { minutesUntilMatch, secondsUntilMatch, isLocked, isLive, formattedTime } = useMemo(() => {
     const matchDate = new Date(match.fecha_hora);
     const now = new Date();
     const diffMs = matchDate.getTime() - now.getTime();
     const diffSeconds = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffSeconds / 60);
-    const locked = diffMinutes <= 25 || match.estado !== 'pendiente';
+    // Cierre exacto al inicio del partido (T-0), sin redondeo de minutos: el usuario
+    // puede pronosticar hasta el último instante antes del kickoff. Coincide con el backend.
+    const locked = diffMs <= 0 || match.estado !== 'pendiente';
     const matchEndMs = matchDate.getTime() + 120 * 60 * 1000;
     const isLive = diffSeconds <= 0 && now.getTime() < matchEndMs && match.estado !== 'finalizado';
     return {
@@ -288,6 +322,15 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
         window.location.href = googleUrl;
       }
     }, 1200);
+  };
+
+  // Abre la búsqueda del resumen en YouTube. Igual en móvil y web: el enlace https
+  // abre la app de YouTube en el celular y el sitio en desktop.
+  const openYouTube = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const query = `${match.equipo_a} vs ${match.equipo_b} resumen`;
+    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    window.open(url, '_blank', 'noopener');
   };
 
   return (
@@ -398,6 +441,25 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
               <span className="text-[10px] font-bold">Ver más</span>
             </span>
           </button>
+          {/* Botón YouTube — busca el resumen del partido. Aparece un tiempo DESPUÉS de
+              finalizar (el resumen no se publica al instante; ver getResumenShowAt).
+              Espejo del botón TikTok (izquierda). Mismo comportamiento móvil/web. */}
+          {showResumen && (
+            <button
+              onClick={openYouTube}
+              title={`Ver resumen de ${match.equipo_a} vs ${match.equipo_b} en YouTube`}
+              aria-label={`Ver resumen de ${match.equipo_a} vs ${match.equipo_b} en YouTube`}
+              className="youtube-beam group absolute top-2 left-3 sm:top-3 sm:left-5 z-10 rounded-full p-[1.5px] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_14px_-3px_rgba(255,0,0,0.75)]"
+            >
+              <span className="flex items-center gap-1.5 rounded-full bg-black px-2.5 py-1 text-white">
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4 flex-shrink-0">
+                  <path fill="#FF0000" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.1 31.1 0 0 0 0 12a31.1 31.1 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.1 31.1 0 0 0 24 12a31.1 31.1 0 0 0-.5-5.8z"/>
+                  <path fill="#ffffff" d="M9.5 15.5v-7l6.3 3.5-6.3 3.5z"/>
+                </svg>
+                <span className="text-[10px] font-bold">Resumen</span>
+              </span>
+            </button>
+          )}
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Team A */}
             <div className="flex flex-col items-center flex-1 min-w-0 relative" id={`team-a-${match.id}`}>

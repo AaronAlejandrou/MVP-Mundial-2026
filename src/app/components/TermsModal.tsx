@@ -78,7 +78,7 @@ function TermsRight({ entryFee = 20 }: { entryFee?: number }) {
           <h3 className="font-bold text-foreground text-sm">3. Registro de Pronósticos</h3>
         </div>
         <ul className="space-y-1 text-xs text-muted-foreground leading-relaxed pl-8">
-          <li><span className="font-semibold text-foreground">Tiempo Límite:</span> Los pronósticos se bloquean automáticamente <span className="font-bold text-foreground">1 hora antes</span> del pitazo inicial.</li>
+          <li><span className="font-semibold text-foreground">Tiempo Límite:</span> Los pronósticos se bloquean automáticamente <span className="font-bold text-foreground">1 minuto antes</span> del pitazo inicial.</li>
           <li><span className="font-semibold text-foreground">Responsabilidad:</span> Es total responsabilidad del participante ingresar sus apuestas a tiempo. No se realizarán modificaciones manuales bajo ninguna circunstancia.</li>
         </ul>
       </div>

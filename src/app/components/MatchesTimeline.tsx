@@ -1,7 +1,8 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { format, startOfDay, isSameDay, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trophy } from 'lucide-react';
+import { Calendar, Trophy, ArrowDown } from 'lucide-react';
 import { MatchCard } from './MatchCard';
 
 interface Match {
@@ -38,6 +39,19 @@ interface MatchesTimelineProps {
 
 export function MatchesTimeline({ matches, predictions, onSavePrediction, onViewGroup, onViewTeam, leagueId, accessToken, currentUserId, predictionsLoaded }: MatchesTimelineProps) {
   const todayRef = useRef<HTMLDivElement>(null);
+  const liveRef = useRef<HTMLDivElement>(null);
+
+  // Re-render periódico para refrescar la detección de "en vivo"/"hoy" (cambios por
+  // tiempo, sin depender solo del polling del padre).
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Si el destino (hoy o el vivo) ya está en pantalla, ocultamos el botón: solo sirve
+  // cuando estás lejos de él.
+  const [targetInView, setTargetInView] = useState(false);
 
   // Agrupar partidos por fecha
   const groupedMatches = matches.reduce((acc, match) => {
@@ -112,6 +126,42 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const currentDateIndex = sortedDates.findIndex(ds => ds >= todayStr);
 
+  // Primer partido en vivo (en_curso, o dentro de la ventana de 120' desde el kickoff).
+  const nowMs = Date.now();
+  const liveMatch = [...matches]
+    .sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime())
+    .find(m => {
+      if (m.estado === 'en_curso') return true;
+      if (m.estado === 'finalizado') return false;
+      const k = new Date(m.fecha_hora).getTime();
+      return nowMs >= k && nowMs < k + 120 * 60 * 1000;
+    });
+  const liveMatchId = liveMatch?.id ?? null;
+
+  // Observa el destino (vivo o el grupo de hoy) y marca si está a la vista. Se re-crea
+  // cuando cambia el destino o cuando cargan los partidos.
+  useEffect(() => {
+    const el = liveMatchId != null ? liveRef.current : todayRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setTargetInView(false);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => setTargetInView(entry.isIntersecting),
+      { rootMargin: '-20% 0px -20% 0px', threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [liveMatchId, matches.length, predictionsLoaded]);
+
+  // Botón flotante contextual: si hay vivo va al vivo, si no al día de hoy. Se oculta
+  // cuando el destino ya está en pantalla (no tiene sentido saltar a donde ya estás).
+  const showJumpButton = (liveMatchId != null || currentDateIndex !== -1) && !targetInView;
+  const jumpToNow = () => {
+    const target = liveMatchId != null ? liveRef.current : todayRef.current;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div className="space-y-8">
       {/* Sistema de Puntuación */}
@@ -125,7 +175,7 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
             Suma puntos automáticamente cuando finalicen los partidos.
             <br />
             <span className="inline-block mt-1.5 px-2 py-0.5 bg-background rounded border border-border text-xs font-bold text-foreground">
-              Tus pronósticos se bloquean 30 minutos antes de cada partido
+              Tus pronósticos se bloquean 1 minuto antes de cada partido
             </span>
           </p>
         </div>
@@ -177,24 +227,62 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
               {dateMatches
                 .sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime())
-                .map(match => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    prediction={predictions[match.id]}
-                    onSavePrediction={onSavePrediction}
-                    onViewGroup={onViewGroup}
-                    onViewTeam={onViewTeam}
-                    leagueId={leagueId}
-                    accessToken={accessToken}
-                    currentUserId={currentUserId}
-                    allMatches={matches}
-                  />
-                ))}
+                .map(match => {
+                  const card = (
+                    <MatchCard
+                      match={match}
+                      prediction={predictions[match.id]}
+                      onSavePrediction={onSavePrediction}
+                      onViewGroup={onViewGroup}
+                      onViewTeam={onViewTeam}
+                      leagueId={leagueId}
+                      accessToken={accessToken}
+                      currentUserId={currentUserId}
+                      allMatches={matches}
+                    />
+                  );
+                  // El partido en vivo lleva un wrapper con ref (destino del botón flotante).
+                  return match.id === liveMatchId ? (
+                    <div key={match.id} ref={liveRef} className="scroll-mt-24">{card}</div>
+                  ) : (
+                    <div key={match.id}>{card}</div>
+                  );
+                })}
             </div>
           </div>
         );
       })}
+
+      {/* Botón flotante contextual: salta al partido en vivo, o al día de hoy si no hay.
+          Va por PORTAL a <body> para que `fixed` sea relativo al viewport (algún
+          ancestro con blur/transform rompía el esquinado). */}
+      {showJumpButton && createPortal(
+        <button
+          onClick={jumpToNow}
+          title={liveMatchId != null ? 'Ir al partido en vivo' : 'Ir a los partidos de hoy'}
+          aria-label={liveMatchId != null ? 'Ir al partido en vivo' : 'Ir a los partidos de hoy'}
+          className={`jump-fab ${liveMatchId != null ? 'jump-fab-live' : 'jump-fab-today'} fixed z-40 bottom-24 right-4 md:bottom-8 md:right-8 flex items-center gap-1.5 rounded-full font-bold transition-transform hover:scale-105 active:scale-95
+            px-3 py-2 text-xs
+            md:px-4 md:py-2.5 md:text-sm md:gap-2`}
+        >
+          {liveMatchId != null ? (
+            <>
+              <span className="relative flex h-2 w-2 md:h-2.5 md:w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 md:h-2.5 md:w-2.5 bg-white" />
+              </span>
+              En vivo
+            </>
+          ) : (
+            <>
+              <ArrowDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="md:hidden">Hoy</span>
+              <span className="hidden md:inline">Ir a Hoy</span>
+            </>
+          )}
+        </button>,
+        document.body
+      )}
     </div>
   );
 }

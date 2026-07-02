@@ -117,33 +117,6 @@ export function formatMatchTime(utcDateString: string): Date {
   return new Date(utcDateString);
 }
 
-/**
- * Calcula minutos hasta un partido
- * @param matchDate - Fecha del partido
- * @returns Minutos restantes (negativo si ya pasó)
- */
-export function getMinutesUntilMatch(matchDate: Date | string): number {
-  const date = typeof matchDate === 'string' ? new Date(matchDate) : matchDate;
-  const now = new Date();
-  const diffMs = date.getTime() - now.getTime();
-  return Math.floor(diffMs / (1000 * 60));
-}
-
-/**
- * Verifica si un partido está bloqueado según la Regla T-30
- * @param matchDate - Fecha del partido
- * @param matchStatus - Estado actual del partido
- * @returns true si está bloqueado
- */
-export function isMatchLocked(
-  matchDate: Date | string,
-  matchStatus: string = 'pendiente'
-): boolean {
-  if (matchStatus !== 'pendiente') return true;
-  const minutesUntil = getMinutesUntilMatch(matchDate);
-  return minutesUntil <= 30;
-}
-
 // ============================================
 // GENERACIÓN DE CÓDIGOS
 // ============================================
