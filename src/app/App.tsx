@@ -228,8 +228,28 @@ export default function App() {
         });
       }
     } catch { /* silent */ }
+    // Refresca los equipos del bracket para reflejar avances automáticos (advanceBracket)
+    // sin necesidad de reload cuando un partido de eliminatorias finaliza.
+    if (bracketLocked) {
+      try {
+        const tr = await apiFetch(`/bracket/knockout-teams?leagueId=${currentLeague.id}`);
+        if (tr.ok) {
+          const { teams } = await tr.json();
+          setKnockoutTeams(prev => {
+            const next = teams ?? {};
+            const prevKeys = Object.keys(prev);
+            const nextKeys = Object.keys(next);
+            if (prevKeys.length !== nextKeys.length) return next;
+            for (const k of nextKeys) {
+              if (!prev[+k] || prev[+k].team1 !== next[k].team1 || prev[+k].team2 !== next[k].team2) return next;
+            }
+            return prev; // sin cambios → misma referencia → sin re-render
+          });
+        }
+      } catch { /* silent */ }
+    }
     await loadLeaderboard();
-  }, [currentLeague?.id, accessToken, loadLeaderboard]);
+  }, [currentLeague?.id, accessToken, bracketLocked, loadLeaderboard]);
 
   // Ciclo rápido (5s): refresca SOLO los marcadores de partidos en_curso.
   // Payload ultraligero (~200 bytes). No toca predicciones ni leaderboard.
