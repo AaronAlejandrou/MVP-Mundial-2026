@@ -30,16 +30,16 @@ export const R32_R: MInfo[] = [
   { id: 87, num: 87, t1: '1ºK', t2: '3º D/E/I/J/L', date: '3 Jul',  time: '20:30', stadium: 'Arrowhead', city: 'KC' },
 ];
 export const R16_L: MInfo[] = [
-  { id: 89, num: 89, t1: 'W74', t2: 'W77', date: '4 Jul', time: '17:00', stadium: 'Lincoln', city: 'PHI' },
+  { id: 89, num: 89, t1: 'W74', t2: 'W77', date: '4 Jul', time: '16:00', stadium: 'Lincoln', city: 'PHI' },
   { id: 90, num: 90, t1: 'W73', t2: 'W75', date: '4 Jul', time: '12:00', stadium: 'NRG', city: 'HOU' },
   { id: 93, num: 93, t1: 'W83', t2: 'W84', date: '6 Jul', time: '14:00', stadium: 'AT&T', city: 'DAL' },
-  { id: 94, num: 94, t1: 'W81', t2: 'W82', date: '6 Jul', time: '17:00', stadium: 'Lumen', city: 'SEA' },
+  { id: 94, num: 94, t1: 'W81', t2: 'W82', date: '6 Jul', time: '19:00', stadium: 'Lumen', city: 'SEA' },
 ];
 export const R16_R: MInfo[] = [
-  { id: 91, num: 91, t1: 'W76', t2: 'W78', date: '5 Jul', time: '16:00', stadium: 'MetLife', city: 'NY' },
-  { id: 92, num: 92, t1: 'W79', t2: 'W80', date: '5 Jul', time: '18:00', stadium: 'Azteca', city: 'CDMX' },
-  { id: 95, num: 95, t1: 'W86', t2: 'W88', date: '7 Jul', time: '12:00', stadium: 'Mercedes', city: 'ATL' },
-  { id: 96, num: 96, t1: 'W85', t2: 'W87', date: '7 Jul', time: '13:00', stadium: 'BC Place', city: 'VAN' },
+  { id: 91, num: 91, t1: 'W76', t2: 'W78', date: '5 Jul', time: '15:00', stadium: 'MetLife', city: 'NY' },
+  { id: 92, num: 92, t1: 'W79', t2: 'W80', date: '5 Jul', time: '19:00', stadium: 'Azteca', city: 'CDMX' },
+  { id: 95, num: 95, t1: 'W86', t2: 'W88', date: '7 Jul', time: '11:00', stadium: 'Mercedes', city: 'ATL' },
+  { id: 96, num: 96, t1: 'W85', t2: 'W87', date: '7 Jul', time: '15:00', stadium: 'BC Place', city: 'VAN' },
 ];
 export const QF_L: MInfo[] = [
   { id: 97, num: 97, t1: 'W89', t2: 'W90', date: '9 Jul',  time: '16:00', stadium: 'Gillette', city: 'BOS' },
