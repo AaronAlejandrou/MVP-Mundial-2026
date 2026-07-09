@@ -77,8 +77,8 @@ const MATCH_DATES: Record<number, string> = {
   91:'2026-07-05T15:00:00-05:00', 92:'2026-07-05T19:00:00-05:00',
   93:'2026-07-06T14:00:00-05:00', 94:'2026-07-06T19:00:00-05:00',
   95:'2026-07-07T11:00:00-05:00', 96:'2026-07-07T15:00:00-05:00',
-  97:'2026-07-09T16:00:00-05:00', 98:'2026-07-10T12:00:00-05:00',
-  99:'2026-07-11T17:00:00-05:00', 100:'2026-07-11T20:00:00-05:00',
+  97:'2026-07-09T15:00:00-05:00', 98:'2026-07-10T14:00:00-05:00',
+  99:'2026-07-11T16:00:00-05:00', 100:'2026-07-11T20:00:00-05:00',
   101:'2026-07-14T14:00:00-05:00', 102:'2026-07-15T15:00:00-05:00',
   103:'2026-07-18T17:00:00-05:00', 104:'2026-07-19T15:00:00-05:00',
 };
@@ -627,6 +627,10 @@ const SPORTSDB_EVENT_IDS: Record<number, string> = {
   // 93 Portugal-Spain · 94 USA-Belgium · 95 Argentina-Egypt · 96 Switzerland-Colombia
   89:"2505624", 90:"2505183", 91:"2505462", 92:"2507706",
   93:"2511721", 94:"2507707", 95:"2513670", 96:"2513671",
+  // ── Cuartos (Quarterfinals) — mapeados por sede vía eventsround r=125 (jul-2026) ──
+  // 97 France-Morocco (Gillette/BOS) · 98 Spain-Belgium (SoFi/LA)
+  // 99 Norway-England (Hard Rock/MIA) · 100 Argentina-Switzerland (Arrowhead/KC)
+  97:"2515305", 98:"2519345", 99:"2517651", 100:"2520608",
 };
 
 // Ventana en minutos en la que consideramos un partido "potencialmente en vivo"
