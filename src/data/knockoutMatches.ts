@@ -50,7 +50,7 @@ export const QF_R: MInfo[] = [
   { id: 100, num: 100, t1: 'W95', t2: 'W96', date: '11 Jul', time: '20:00', stadium: 'Arrowhead', city: 'KC' },
 ];
 export const SF_L: MInfo[] = [{ id: 101, num: 101, t1: 'W97', t2: 'W98', date: '14 Jul', time: '14:00', stadium: 'AT&T', city: 'DAL' }];
-export const SF_R: MInfo[] = [{ id: 102, num: 102, t1: 'W99', t2: 'W100', date: '15 Jul', time: '15:00', stadium: 'Mercedes', city: 'ATL' }];
+export const SF_R: MInfo[] = [{ id: 102, num: 102, t1: 'W99', t2: 'W100', date: '15 Jul', time: '14:00', stadium: 'Mercedes', city: 'ATL' }];
 export const THIRD: MInfo = { id: 103, num: 103, t1: 'L101', t2: 'L102', date: '18 Jul', time: '17:00', stadium: 'Hard Rock', city: 'MIA' };
 export const FINAL: MInfo = { id: 104, num: 104, t1: 'W101', t2: 'W102', date: '19 Jul', time: '15:00', stadium: 'MetLife', city: 'NY' };
 

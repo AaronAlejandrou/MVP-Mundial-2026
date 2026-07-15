@@ -79,7 +79,7 @@ const MATCH_DATES: Record<number, string> = {
   95:'2026-07-07T11:00:00-05:00', 96:'2026-07-07T15:00:00-05:00',
   97:'2026-07-09T15:00:00-05:00', 98:'2026-07-10T14:00:00-05:00',
   99:'2026-07-11T16:00:00-05:00', 100:'2026-07-11T20:00:00-05:00',
-  101:'2026-07-14T14:00:00-05:00', 102:'2026-07-15T15:00:00-05:00',
+  101:'2026-07-14T14:00:00-05:00', 102:'2026-07-15T14:00:00-05:00',
   103:'2026-07-18T17:00:00-05:00', 104:'2026-07-19T15:00:00-05:00',
 };
 
@@ -631,6 +631,11 @@ const SPORTSDB_EVENT_IDS: Record<number, string> = {
   // 97 France-Morocco (Gillette/BOS) · 98 Spain-Belgium (SoFi/LA)
   // 99 Norway-England (Hard Rock/MIA) · 100 Argentina-Switzerland (Arrowhead/KC)
   97:"2515305", 98:"2519345", 99:"2517651", 100:"2520608",
+  // ── Semifinales — OJO: en TheSportsDB usan intRound=150 (NO r=4 ni r=125), por eso
+  // eventsround no las encuentra; se verificaron vía eventsday (jul-2026).
+  // 101 France-Spain (14:00) · 102 England-Argentina (14:00)
+  101:"2528031", 102:"2528727",
+  // 103 (3er puesto, 18-jul) y 104 (final, 19-jul): aún sin publicar en la API.
 };
 
 // Ventana en minutos en la que consideramos un partido "potencialmente en vivo"
