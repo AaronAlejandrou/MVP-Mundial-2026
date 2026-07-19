@@ -184,10 +184,11 @@ export default function App() {
         const data = await res.json();
         const preds: Record<number, any> = {};
         data.predictions.forEach((p: any) => {
-          preds[p.matchId] = {
+          const mid = p.match_id ?? p.matchId;
+          preds[mid] = {
             goles_a: p.goles_a,
             goles_b: p.goles_b,
-            puntos_obtenidos: p.puntosObtenidos ?? undefined,
+            puntos_obtenidos: p.puntosObtenidos ?? p.puntos_obtenidos,
           };
         });
         setPredictions(preds);
@@ -264,10 +265,11 @@ export default function App() {
           const next = { ...prev };
           let changed = false;
           (pdata.predictions || []).forEach((p: any) => {
+            const mid = p.match_id ?? p.matchId;
             const incoming = { goles_a: p.goles_a, goles_b: p.goles_b, puntos_obtenidos: p.puntosObtenidos ?? undefined };
-            const existing = prev[p.matchId];
+            const existing = prev[mid];
             if (!existing || existing.goles_a !== incoming.goles_a || existing.goles_b !== incoming.goles_b || existing.puntos_obtenidos !== incoming.puntos_obtenidos) {
-              next[p.matchId] = incoming; // referencia nueva solo si realmente cambió
+              next[mid] = incoming; // referencia nueva solo si realmente cambió
               changed = true;
             }
           });

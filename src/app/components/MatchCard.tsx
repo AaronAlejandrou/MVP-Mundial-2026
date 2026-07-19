@@ -420,22 +420,23 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     vsMid = winnerMid(predDiff);
   }
 
+  const topX = vsMid + 8;
+  const bottomX = vsMid - 8;
+  const clipB = `polygon(${topX}% -10%, 120% -10%, 120% 110%, ${bottomX}% 110%)`;
+  const clipSeam = `polygon(${topX + 0.3}% -10%, ${topX - 0.3}% -10%, ${bottomX - 0.3}% 110%, ${bottomX + 0.3}% 110%)`;
+
   return (
     <div className="match-cv relative w-full">
       <div className={`relative isolate bg-card rounded-xl shadow-mundial border border-border overflow-hidden transition-all duration-300 hover:shadow-mundial-lg max-w-full ${premium ? 'mc-gala' : ''}`}>
-        {/* Banderas a sangre completa: A es base, B encima enmascarada; el corte
-            (--vs-mid) responde al marcador y transiciona suave. En el skin gala
-            se omiten (la escena ya tiene los lavados de bandera de fondo). */}
         {!premium && (
           <div
             className={`vs-bg ${match.estado === 'finalizado' ? 'vs-finished' : ''}`}
             aria-hidden="true"
-            style={{ '--vs-mid': `${vsMid}%` } as React.CSSProperties}
           >
             {flagAUrl && <div className="vs-bg-flag" style={{ backgroundImage: `url("${flagAUrl}")` }} />}
-            {flagBUrl && <div className="vs-bg-flag vs-bg-b" style={{ backgroundImage: `url("${flagBUrl}")` }} />}
+            {flagBUrl && <div className="vs-bg-flag vs-bg-b" style={{ backgroundImage: `url("${flagBUrl}")`, clipPath: clipB }} />}
             <div className="vs-bg-veil" />
-            {match.estado !== 'finalizado' && <div className="vs-seam" />}
+            {match.estado !== 'finalizado' && <div className="vs-seam" style={{ clipPath: clipSeam }} />}
           </div>
         )}
 

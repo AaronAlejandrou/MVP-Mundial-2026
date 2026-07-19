@@ -587,18 +587,11 @@
    (máscara vertical) para que resultado/puntos se lean sobre la card limpia.
    El velo es distinto por modo (claro lava, oscuro atenúa).
    ══════════════════════════════════════════════════════════════════════ */
-@property --vs-mid {
-  syntax: '<percentage>';
-  inherits: true;
-  initial-value: 50%;
-}
 .vs-bg {
   position: absolute;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  --vs-mid: 50%;
-  transition: --vs-mid 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 46%, rgba(0, 0, 0, 0.28) 72%, transparent 94%);
           mask-image: linear-gradient(180deg, #000 0%, #000 46%, rgba(0, 0, 0, 0.28) 72%, transparent 94%);
 }
@@ -622,25 +615,20 @@
 /* Bandera B (derecha): capa superior enmascarada. Corte NÍTIDO (banda de
    mezcla mínima) para que los colores de ambas no se ensucien entre sí. */
 .vs-bg-b {
-  -webkit-mask-image: linear-gradient(104deg, transparent calc(var(--vs-mid) - 1.5%), #000 calc(var(--vs-mid) + 1.5%));
-          mask-image: linear-gradient(104deg, transparent calc(var(--vs-mid) - 1.5%), #000 calc(var(--vs-mid) + 1.5%));
+  transition: clip-path 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 /* Costura de luz: hairline diagonal en el punto de corte — hace que el
    encuentro de las dos banderas se lea deliberado (gráfica deportiva), no
-   como choque. Sigue a --vs-mid con la misma transición del padre. */
+   como choque. */
 .vs-seam {
   position: absolute;
   inset: 0;
-  background: linear-gradient(104deg,
-    transparent calc(var(--vs-mid) - 0.6%),
-    rgba(255, 255, 255, 0.45) var(--vs-mid),
-    transparent calc(var(--vs-mid) + 0.6%));
+  background-color: white;
+  opacity: 0.45;
+  transition: clip-path 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .dark .vs-seam {
-  background: linear-gradient(104deg,
-    transparent calc(var(--vs-mid) - 0.6%),
-    rgba(255, 255, 255, 0.30) var(--vs-mid),
-    transparent calc(var(--vs-mid) + 0.6%));
+  opacity: 0.30;
 }
 /* Velo de legibilidad, uniforme (sin manchas). Tema claro: lava hacia blanco.
    Tema oscuro: atenúa hacia el slate del fondo. */
@@ -1224,7 +1212,7 @@
   .fi-out-up { transition: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .vs-bg { transition: none; }
+  .vs-bg-b, .vs-seam { transition: none; }
 }
 
 /* ── Rendimiento mobile: las cards fuera de pantalla no se pintan ──
