@@ -445,19 +445,23 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
               <div
                 style={{
                   position: 'absolute',
-                  inset: '0 -100%',
-                  WebkitMaskImage: 'linear-gradient(104deg, transparent calc(50% - 1.5px), #000 calc(50% + 1.5px))',
-                  maskImage: 'linear-gradient(104deg, transparent calc(50% - 1.5px), #000 calc(50% + 1.5px))',
-                  transform: `translateX(${translateMask}%) translateZ(0)`,
+                  inset: 0,
+                  width: '200%',
+                  transformOrigin: 'left center',
+                  transform: `translateX(${vsMid / 2}%) skewX(14deg) translateZ(0)`,
                   transition: 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
-                  willChange: 'transform'
+                  willChange: 'transform',
+                  overflow: 'hidden',
+                  zIndex: 2
                 }}
               >
                 <div
                   style={{
                     position: 'absolute',
-                    top: 0, bottom: 0, left: '33.333333%', width: '33.333333%',
-                    transform: `translateX(${-(translateMask * 3)}%) scale(${match.estado === 'finalizado' ? 1.16 : 1}) translateZ(0)`,
+                    inset: 0,
+                    width: '50%',
+                    transformOrigin: 'left center',
+                    transform: `skewX(-14deg) translateX(${-vsMid}%) scale(${match.estado === 'finalizado' ? 1.16 : 1}) translateZ(0)`,
                     transition: 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
                     willChange: 'transform',
                     backgroundSize: 'cover',
@@ -470,20 +474,28 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
               </div>
             )}
             
-            <div className="vs-bg-veil" />
+            <div className="vs-bg-veil" style={{ zIndex: 3 }} />
             
             {match.estado !== 'finalizado' && (
               <div
-                className="vs-seam-layer"
                 style={{
                   position: 'absolute',
-                  inset: '0 -100%',
-                  background: 'linear-gradient(104deg, transparent calc(50% - 1.5px), #fff 50%, transparent calc(50% + 1.5px))',
-                  transform: `translateX(${translateMask}%) translateZ(0)`,
+                  top: 0, bottom: 0, left: 0, width: 0,
+                  transformOrigin: 'left center',
+                  transform: `translateX(${vsMid}%) skewX(14deg) translateZ(0)`,
                   transition: 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
-                  willChange: 'transform'
+                  willChange: 'transform',
+                  zIndex: 4
                 }}
-              />
+              >
+                <div style={{
+                  position: 'absolute',
+                  top: 0, bottom: 0, left: '-1px', width: '2px',
+                  backgroundColor: '#ffffff',
+                  opacity: premium ? 0.25 : 0.55,
+                  boxShadow: '0 0 8px 1px rgba(255,255,255,0.45)'
+                }} />
+              </div>
             )}
           </div>
         )}
