@@ -420,10 +420,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     vsMid = winnerMid(predDiff);
   }
 
-  const topX = vsMid + 8;
-  const bottomX = vsMid - 8;
-  const clipB = `polygon(${topX}% -10%, 120% -10%, 120% 110%, ${bottomX}% 110%)`;
-  const clipSeam = `polygon(${topX + 0.3}% -10%, ${topX - 0.3}% -10%, ${bottomX - 0.3}% 110%, ${bottomX + 0.3}% 110%)`;
+  const translateMask = (vsMid - 50) / 3;
 
   return (
     <div className="match-cv relative w-full">
@@ -433,10 +430,61 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
             className={`vs-bg ${match.estado === 'finalizado' ? 'vs-finished' : ''}`}
             aria-hidden="true"
           >
-            {flagAUrl && <div className="vs-bg-flag" style={{ backgroundImage: `url("${flagAUrl}")` }} />}
-            {flagBUrl && <div className="vs-bg-flag vs-bg-b" style={{ backgroundImage: `url("${flagBUrl}")`, clipPath: clipB }} />}
+            {flagAUrl && (
+              <div 
+                className="vs-bg-flag" 
+                style={{ 
+                  backgroundImage: `url("${flagAUrl}")`,
+                  filter: match.estado === 'finalizado' ? 'blur(10px) saturate(1.08)' : 'none',
+                  transform: `scale(${match.estado === 'finalizado' ? 1.16 : 1}) translateZ(0)`,
+                }} 
+              />
+            )}
+            
+            {flagBUrl && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: '0 -100%',
+                  WebkitMaskImage: 'linear-gradient(104deg, transparent calc(50% - 1.5px), #000 calc(50% + 1.5px))',
+                  maskImage: 'linear-gradient(104deg, transparent calc(50% - 1.5px), #000 calc(50% + 1.5px))',
+                  transform: `translateX(${translateMask}%) translateZ(0)`,
+                  transition: 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+                  willChange: 'transform'
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0, bottom: 0, left: '33.333333%', width: '33.333333%',
+                    transform: `translateX(${-(translateMask * 3)}%) scale(${match.estado === 'finalizado' ? 1.16 : 1}) translateZ(0)`,
+                    transition: 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+                    willChange: 'transform',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundImage: `url("${flagBUrl}")`,
+                    filter: match.estado === 'finalizado' ? 'blur(10px) saturate(1.08)' : 'none',
+                  }}
+                />
+              </div>
+            )}
+            
             <div className="vs-bg-veil" />
-            {match.estado !== 'finalizado' && <div className="vs-seam" style={{ clipPath: clipSeam }} />}
+            
+            {match.estado !== 'finalizado' && (
+              <div
+                className="vs-seam-layer"
+                style={{
+                  position: 'absolute',
+                  inset: '0 -100%',
+                  background: 'linear-gradient(104deg, transparent calc(50% - 1.5px), #fff 50%, transparent calc(50% + 1.5px))',
+                  transform: `translateX(${translateMask}%) translateZ(0)`,
+                  transition: 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+                  willChange: 'transform'
+                }}
+              />
+            )}
           </div>
         )}
 
