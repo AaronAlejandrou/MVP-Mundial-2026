@@ -512,10 +512,11 @@ export default function App() {
   // La Gran Final (104) — alimenta el intro cinemático y el botón flotante.
   const finalMatch = enrichedMatches.find(m => m.id === 104);
   const isPlaceholderTeam = (t: string) => /^[WL]\d|^[1-4]º/.test(t);
-  // ¿Lista para presentarse? Equipos confirmados y partido aún por jugar
-  // (pendiente: durante el en vivo y tras el final ya no tiene sentido la previa).
+  // ¿Lista para presentarse? Equipos confirmados (no placeholders). La escena se
+  // mantiene en las 3 etapas del partido: previa (pendiente), EN VIVO (en_curso)
+  // y resultado (finalizado). La propia FinalIntro adapta sus textos por estado.
   const finalReady = !!finalMatch
-    && finalMatch.estado === 'pendiente'
+    && (finalMatch.estado === 'pendiente' || finalMatch.estado === 'en_curso' || finalMatch.estado === 'finalizado')
     && !isPlaceholderTeam(finalMatch.equipo_a)
     && !isPlaceholderTeam(finalMatch.equipo_b);
   // Actualizar flag para ciclos de polling — activa solo cuando hay algo en vivo

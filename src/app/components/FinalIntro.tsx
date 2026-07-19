@@ -140,6 +140,11 @@ export function FinalIntro({ match, prediction, predictions, onSavePrediction, l
   const p2 = (n: number) => String(n).padStart(2, '0');
   const countdown = dd > 0 ? `${dd}d ${p2(hh)}h ${p2(mm)}m` : `${p2(hh)}:${p2(mm)}:${p2(ss)}`;
 
+  // Estado del partido: la escena vive en 3 momentos. El countdown solo aplica
+  // en la previa; en vivo/final se reemplaza por su indicador correspondiente.
+  const isLive = match.estado === 'en_curso';
+  const isDone = match.estado === 'finalizado';
+
   const flagA = flagUrlFor(match.equipo_a);
   const flagB = flagUrlFor(match.equipo_b);
 
@@ -305,8 +310,23 @@ export function FinalIntro({ match, prediction, predictions, onSavePrediction, l
         </div>
 
         <div className="fi-count flex flex-col items-center gap-1">
-          <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50">Comienza en</span>
-          <span className="font-score text-3xl font-bold text-[#F1D07C] tabular-nums">{countdown}</span>
+          {isLive ? (
+            <span className="font-score text-3xl font-bold text-[#F1D07C] tabular-nums flex items-center gap-2.5">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              {match.goles_a ?? 0}<span className="text-white/40">–</span>{match.goles_b ?? 0}
+              <span className="text-sm font-bold text-red-400 tracking-[0.2em] uppercase">En vivo</span>
+            </span>
+          ) : isDone ? (
+            <>
+              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50">Resultado final</span>
+              <span className="font-score text-3xl font-bold text-[#F1D07C] tabular-nums">{match.goles_a ?? 0}<span className="text-white/40">–</span>{match.goles_b ?? 0}</span>
+            </>
+          ) : (
+            <>
+              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50">Comienza en</span>
+              <span className="font-score text-3xl font-bold text-[#F1D07C] tabular-nums">{countdown}</span>
+            </>
+          )}
         </div>
 
         {hint}
@@ -389,8 +409,21 @@ export function FinalIntro({ match, prediction, predictions, onSavePrediction, l
             La Gran Final
           </div>
           <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 border border-white/15">
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Cierra en</span>
-            <span className="font-score text-4xl font-bold text-[#F1D07C] tabular-nums leading-none">{countdown}</span>
+            {isLive ? (
+              <span className="flex items-center gap-2.5 font-score text-lg font-bold text-red-400 tracking-[0.15em] uppercase leading-none">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                En vivo
+              </span>
+            ) : isDone ? (
+              <span className="font-score text-lg font-bold text-[#F1D07C] tracking-[0.1em] uppercase leading-none">
+                Resultado final
+              </span>
+            ) : (
+              <>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Cierra en</span>
+                <span className="font-score text-4xl font-bold text-[#F1D07C] tabular-nums leading-none">{countdown}</span>
+              </>
+            )}
           </div>
         </div>
 
