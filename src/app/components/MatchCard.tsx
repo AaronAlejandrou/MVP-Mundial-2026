@@ -130,8 +130,18 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, onViewTeam, leagueId, accessToken, currentUserId, allMatches, premium = false, onScoreChange, askWinnerOnDraw = false, onDrawWinner }: MatchCardProps) {
-  const [golesA, setGolesA] = useState<number>(0);
-  const [golesB, setGolesB] = useState<number>(0);
+  // Compuerta "re-predicción forzada": UNA sola vez (persistida por partido),
+  // un partido aún pronosticable muestra 0-0 + "Guardar" aunque ya tengas un
+  // pronóstico — para que todos pasen por las animaciones nuevas. Tras guardar
+  // esa vez, se comporta 100% normal (usa tu pronóstico guardado). No aplica a
+  // partidos ya jugados/en curso.
+  const isPending = match.estado !== 'finalizado' && match.estado !== 'en_curso';
+  const forceKey = `polla_repredict_${match.id}`;
+  const [reforced, setReforced] = useState(() => localStorage.getItem(forceKey) === '1');
+  const forceZero = isPending && !reforced;
+
+  const [golesA, setGolesA] = useState<number>(forceZero ? 0 : (prediction?.goles_a ?? 0));
+  const [golesB, setGolesB] = useState<number>(forceZero ? 0 : (prediction?.goles_b ?? 0));
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   // El usuario tocó el marcador de ESTA card: activa el efecto reactivo de las
@@ -145,6 +155,17 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     onScoreChange?.(golesA, golesB);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [golesA, golesB]);
+
+  // Carga el pronóstico guardado en las cajas — SALVO en el forzado (0-0). Así,
+  // ya cumplido el forzado, el partido usa tu pronóstico con normalidad (incluso
+  // si llega por red después del montaje).
+  useEffect(() => {
+    if (!forceZero && prediction) {
+      setGolesA(prediction.goles_a);
+      setGolesB(prediction.goles_b);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prediction, forceZero]);
   const [showGroupHover, setShowGroupHover] = useState(false);
   const [showTeamAHover, setShowTeamAHover] = useState(false);
   const [showTeamBHover, setShowTeamBHover] = useState(false);
@@ -301,7 +322,9 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     try {
       await onSavePrediction(match.id, golesA, golesB);
       setIsSaved(true);
-      setHasSavedSession(true);
+      // Cumplido el forzado (persistido): desde ahora este partido va normal.
+      localStorage.setItem(forceKey, '1');
+      setReforced(true);
       fireConfetti(celebrationTeam);
       setTimeout(() => setIsSaved(false), 2000);
     } catch (error) {
@@ -326,8 +349,9 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     return golesA !== prediction.goles_a || golesB !== prediction.goles_b;
   };
 
-  const [hasSavedSession, setHasSavedSession] = useState(false);
-  const canSave = !isLocked && (!hasSavedSession || hasChanges()) && !isSaving;
+  // En el forzado (0-0) el botón siempre está activo (guarda aunque sea 0-0);
+  // ya cumplido, se activa solo si hay cambios reales.
+  const canSave = !isLocked && (forceZero || hasChanges()) && !isSaving;
 
   const increment = (team: 'a' | 'b') => {
     if (isLocked) return;
