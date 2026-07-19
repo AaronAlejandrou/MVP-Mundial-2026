@@ -179,6 +179,10 @@ export function FinalIntro({ match, prediction, predictions, onSavePrediction, l
     </div>
   );
 
+  const fiwMid = celebSide === 'a' ? 70 : celebSide === 'b' ? 30 : 50;
+  // The wrapper is inset: -50% (200% width). To move the cut by X% of screen, we translate the wrapper by X/2 %.
+  const washTranslate = (fiwMid - 50) / 2;
+
   return (
     <div
       className={`final-intro ${docked ? 'final-intro-docked' : ''} ${closing ? 'final-intro-out' : ''}`}
@@ -193,14 +197,54 @@ export function FinalIntro({ match, prediction, predictions, onSavePrediction, l
       }}
     >
       {/* Lavados gigantes con los colores de cada finalista. El lado del
-          ganador que elijas PREDOMINA (el corte se desplaza con transición). */}
-      <div
-        className="fi-wash"
-        aria-hidden="true"
-        style={{ '--fiw-mid': celebSide === 'a' ? '70%' : celebSide === 'b' ? '30%' : '50%' } as React.CSSProperties}
-      >
-        {flagA && <div className="fi-wash-a" style={{ backgroundImage: `url("${flagA}")` }} />}
-        {flagB && <div className="fi-wash-b" style={{ backgroundImage: `url("${flagB}")` }} />}
+          ganador que elijas PREDOMINA (el corte se desplaza con transición de translate, sin animar máscara). */}
+      <div className="fi-wash" aria-hidden="true">
+        {flagA && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: '-50%', // 200% wide/tall to allow translation without showing edges
+              WebkitMaskImage: 'linear-gradient(104deg, #000 40%, transparent 60%)',
+              maskImage: 'linear-gradient(104deg, #000 40%, transparent 60%)',
+              transform: `translateX(${washTranslate}%) translateZ(0)`,
+              transition: 'transform 0.9s cubic-bezier(0.22, 1, 0.36, 1)',
+              willChange: 'transform'
+            }}
+          >
+            <div
+              className="fi-wash-flag"
+              style={{
+                backgroundImage: `url("${flagA}")`,
+                transform: `translateX(${-washTranslate}%) translateZ(0)`,
+                transition: 'transform 0.9s cubic-bezier(0.22, 1, 0.36, 1)',
+                willChange: 'transform'
+              }}
+            />
+          </div>
+        )}
+        {flagB && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: '-50%',
+              WebkitMaskImage: 'linear-gradient(104deg, transparent 40%, #000 60%)',
+              maskImage: 'linear-gradient(104deg, transparent 40%, #000 60%)',
+              transform: `translateX(${washTranslate}%) translateZ(0)`,
+              transition: 'transform 0.9s cubic-bezier(0.22, 1, 0.36, 1)',
+              willChange: 'transform'
+            }}
+          >
+            <div
+              className="fi-wash-flag"
+              style={{
+                backgroundImage: `url("${flagB}")`,
+                transform: `translateX(${-washTranslate}%) translateZ(0)`,
+                transition: 'transform 0.9s cubic-bezier(0.22, 1, 0.36, 1)',
+                willChange: 'transform'
+              }}
+            />
+          </div>
+        )}
       </div>
       <div className="fi-aurora" aria-hidden="true" />
       {/* Polvo dorado ascendiendo (todas las fases) */}
