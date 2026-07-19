@@ -195,6 +195,13 @@ export const COUNTRY_CODES: Record<string, string> = {
   'India':               'in',
 };
 
+/** URL de la bandera para FONDOS (raster w640 de flagcdn — mucho más barato de
+    pintar a pantalla completa que el SVG) o null si el país no está mapeado. */
+export function flagUrlFor(country: string): string | null {
+  const code = COUNTRY_CODES[country];
+  return code ? `https://flagcdn.com/w640/${code}.png` : null;
+}
+
 interface CountryFlagProps {
   country: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';

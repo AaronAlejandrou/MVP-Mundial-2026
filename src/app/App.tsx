@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { RUNNING_VERSION } from '../lib/version';
 import { Layout } from './components/Layout';
 import { MatchesTimeline } from './components/MatchesTimeline';
@@ -6,15 +6,22 @@ import { Leaderboard } from './components/Leaderboard';
 import { LeagueManager } from './components/LeagueManager';
 import { TermsPanel } from './components/TermsModal';
 import { Auth } from './components/Auth';
-import { ThemeToggle } from './components/ThemeToggle';
+import { FinalIntro } from './components/FinalIntro';
+import { MyStats } from './components/MyStats';
 import { KnockoutBracket } from './components/KnockoutBracket';
 import { GroupStandings } from './components/GroupStandings';
 import { AdminPanel } from './components/AdminPanel';
 import { ToastContainer, useToast } from './components/Toast';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, LogOut, Trophy } from 'lucide-react';
 import { GROUP_STAGE_MATCHES } from '../data/groupStageMatches';
 import { getResolvedKnockoutMatches } from '../data/knockoutMatches';
 import { apiFetch } from '../lib/api';
+
+// Compuerta temporal del push: la app queda "atascada" en Sincronizando para
+// todos hasta esta hora (Lima, UTC-5), excepto el usuario exento (pruebas).
+// A partir de esa hora se desbloquea sola, sin necesitar refresco.
+const STOPPER_UNLOCK_AT = new Date('2026-07-19T10:00:00-05:00').getTime();
+const STOPPER_EXEMPT_USER_ID = 'de24be4c-3b91-4f8b-83c2-9cdde72e3236'; // Aaron Cruz
 
 export default function App() {
   const { toasts, toast, remove: removeToast } = useToast();
@@ -29,9 +36,15 @@ export default function App() {
   const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
   const [leagueExists, setLeagueExists]     = useState<boolean | null>(null);
 
-  const [currentView, setCurrentView] = useState<'matches'|'leaderboard'|'leagues'|'knockout'|'standings'>('matches');
+  const [currentView, setCurrentView] = useState<'matches'|'leaderboard'|'leagues'|'knockout'|'standings'|'mystats'>('matches');
   const [predictions, setPredictions]   = useState<Record<number, any>>({});
   const [predictionsLoaded, setPredictionsLoaded] = useState(false);
+  // La carga inicial completa (resultados + bracket + ranking) terminó. Hasta
+  // entonces se mantiene "Sincronizando" — evita el destello de la vista de
+  // partidos antes de que la escena Inicio pueda decidirse.
+  // Sincronización inicial terminada
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
+  const [syncOverlayVisible, setSyncOverlayVisible] = useState(true);
   const [matchResults, setMatchResults] = useState<Record<number, any>>({});
   const [leaderboard, setLeaderboard]   = useState<any[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
@@ -45,6 +58,39 @@ export default function App() {
   // Badge "¡Actu!" en Eliminatorias: invita a entrar tras una actualización.
   // Se apaga y se recuerda por versión cuando el usuario entra a Eliminatorias.
   const [showActu, setShowActu] = useState(false);
+
+  // Escena "LA GRAN FINAL" = vista Inicio durante la final. `docked` = con el
+  // nav (Partidos/Ranking) visible encima; al cargar arranca inmersiva.
+  const [showFinalIntro, setShowFinalIntro] = useState(false);
+  const [finalDocked, setFinalDocked] = useState(false);
+  const finalIntroShownRef = useRef(false);
+
+  // Compuerta temporal (ver STOPPER_UNLOCK_AT): re-chequea cada 1s mientras
+  // esté cerrada para auto-desbloquear a la hora sin necesitar refresco.
+  const [, setStopperTick] = useState(0);
+  useEffect(() => {
+    if (Date.now() >= STOPPER_UNLOCK_AT) return;
+    const id = setInterval(() => {
+      if (Date.now() >= STOPPER_UNLOCK_AT) {
+        clearInterval(id);
+        window.location.reload();
+      } else {
+        setStopperTick(t => t + 1);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+  const isStopperActive = !!currentUser
+    && currentUser.id !== STOPPER_EXEMPT_USER_ID
+    && Date.now() < STOPPER_UNLOCK_AT;
+
+  // Muestra el mensaje de hype 7s después de que la pantalla de stopper aparece.
+  const [showStopperHype, setShowStopperHype] = useState(false);
+  useEffect(() => {
+    if (!isStopperActive) { setShowStopperHype(false); return; }
+    const t = setTimeout(() => setShowStopperHype(true), 7000);
+    return () => clearTimeout(t);
+  }, [isStopperActive]);
 
   // Snapshot de los partidos enriquecidos, leído por el intervalo de auto-refresco
   const liveMatchesRef = useRef<any[]>([]);
@@ -172,6 +218,7 @@ export default function App() {
     } catch { /* silent */ }
 
     await loadLeaderboard();
+    setInitialSyncDone(true);
   }, [currentLeague?.id, accessToken]);
 
   const loadLeaderboard = useCallback(async () => {
@@ -359,6 +406,7 @@ export default function App() {
     localStorage.removeItem('auth_token');
     setCurrentUser(null); setAccessToken(''); setCurrentLeague(null);
     setPredictions({}); setLeaderboard([]); setMatchResults({});
+    setInitialSyncDone(false);
     setCurrentView('matches');
   };
 
@@ -459,8 +507,28 @@ export default function App() {
     segundo_tiempo_inicio: matchResults[m.id]?.segundoTiempoInicio ?? null,
   }));
   liveMatchesRef.current = enrichedMatches;
+  // La Gran Final (104) — alimenta el intro cinemático y el botón flotante.
+  const finalMatch = enrichedMatches.find(m => m.id === 104);
+  const isPlaceholderTeam = (t: string) => /^[WL]\d|^[1-4]º/.test(t);
+  // ¿Lista para presentarse? Equipos confirmados y partido aún por jugar
+  // (pendiente: durante el en vivo y tras el final ya no tiene sentido la previa).
+  const finalReady = !!finalMatch
+    && finalMatch.estado === 'pendiente'
+    && !isPlaceholderTeam(finalMatch.equipo_a)
+    && !isPlaceholderTeam(finalMatch.equipo_b);
   // Actualizar flag para ciclos de polling — activa solo cuando hay algo en vivo
   anyLiveRef.current = enrichedMatches.some(m => m.estado === 'en_curso');
+
+  useEffect(() => {
+    if (initialSyncDone) {
+      if (finalReady && localStorage.getItem('polla_final_intro_seen') !== '1') {
+        const t = setTimeout(() => setSyncOverlayVisible(false), 600);
+        return () => clearTimeout(t);
+      } else {
+        setSyncOverlayVisible(false);
+      }
+    }
+  }, [initialSyncDone, finalReady]);
   // Flag de "ventana de juego": true si algún partido está dentro de su horario
   // estimado [kickoff-5min, kickoff+135min] aunque aún no esté en_curso. Permite
   // que el heartbeat detecte el kickoff en arranque en frío (tab abierto antes
@@ -487,6 +555,25 @@ export default function App() {
       localStorage.setItem('polla_elims_seen_version', RUNNING_VERSION);
     }
   }, [currentView, showActu]);
+
+  // Escena "LA GRAN FINAL" al entrar: la intro cinemática (hero→camino→card)
+  // solo la PRIMERA vez; después se abre anclada directo en la card. El flag
+  // se marca al completar la intro (onContinue). useLayoutEffect: se decide
+  // ANTES del paint → sin destello de la vista de partidos.
+  useLayoutEffect(() => {
+    if (!finalReady || finalIntroShownRef.current) return;
+    finalIntroShownRef.current = true;
+    const seen = localStorage.getItem('polla_final_intro_seen') === '1';
+    setFinalDocked(seen);       // vista → anclada directo; sin ver → intro inmersiva
+    setShowFinalIntro(true);
+  }, [finalReady]);
+
+  // Reproduce la intro completa otra vez (botón play): re-monta inmersiva en hero.
+  const replayFinalIntro = () => {
+    setShowFinalIntro(false);
+    setFinalDocked(false);
+    setTimeout(() => setShowFinalIntro(true), 30);
+  };
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -517,6 +604,59 @@ export default function App() {
     );
   }
 
+  if (isStopperActive) {
+    const msLeft = STOPPER_UNLOCK_AT - Date.now();
+    const totalSecsLeft = Math.max(0, Math.ceil(msLeft / 1000));
+    const hrsLeft = Math.floor(totalSecsLeft / 3600);
+    const minsLeft = Math.floor((totalSecsLeft % 3600) / 60);
+    const secsLeft = totalSecsLeft % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    // Show hype message 7s after the stopper screen appears.
+    const showHype = showStopperHype;
+
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden opacity-50">
+          <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+            <source src="/video-intro.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px]" />
+        </div>
+        <div className="text-center space-y-4 relative z-10 px-6 max-w-sm">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
+          <p className="text-sm font-bold text-white drop-shadow-md">Sincronizando...</p>
+
+          {showHype && (
+            <div className="flex flex-col items-center gap-3 mt-4" style={{ animation: 'fadeIn 0.6s ease-out both' }}>
+              <p className="text-lg font-black text-white drop-shadow-lg">
+                Disponible a las 10:00 AM
+              </p>
+              <p className="text-xs text-white/50 font-medium">Faltan</p>
+              <div className="flex items-center gap-1.5">
+                {hrsLeft > 0 && (
+                  <>
+                    <span className="font-score text-3xl font-bold text-primary tabular-nums">{pad(hrsLeft)}</span>
+                    <span className="text-white/30 text-lg font-bold">:</span>
+                  </>
+                )}
+                <span className="font-score text-3xl font-bold text-primary tabular-nums">{pad(minsLeft)}</span>
+                <span className="text-white/30 text-lg font-bold">:</span>
+                <span className="font-score text-3xl font-bold text-primary tabular-nums">{pad(secsLeft)}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="mt-3 flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (!currentLeague) {
     return (
       <>
@@ -527,6 +667,7 @@ export default function App() {
               <source src="/video-intro.mp4" type="video/mp4" />
             </video>
             <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px]" />
+            <div className="app-ambient" />
           </div>
 
           <div className="w-full max-w-5xl mx-auto py-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -555,16 +696,6 @@ export default function App() {
                   invitationCode={invitationCode || undefined}
                 />
 
-                <div className="bg-card/60 backdrop-blur-xl border border-border/50 p-5 rounded-3xl flex flex-col items-center gap-3 shadow-mundial-lg transition-all hover:bg-card/80">
-                  <p className="text-sm font-bold text-foreground text-center">
-                    Personaliza tu experiencia:<br/>
-                    <span className="text-xs text-muted-foreground font-medium">Elige el tema claro u oscuro antes de entrar</span>
-                  </p>
-                  <div className="transform scale-125 mt-1">
-                    <ThemeToggle />
-                  </div>
-                </div>
-
                 <div className="text-center">
                   <button onClick={handleLogout} className="text-sm text-muted-foreground hover:text-destructive transition-colors font-bold px-4 py-2 rounded-xl hover:bg-destructive/10">
                     Cerrar sesión
@@ -584,7 +715,11 @@ export default function App() {
     );
   }
 
-  const handleViewChange = (view: 'matches' | 'leaderboard' | 'leagues' | 'knockout' | 'standings') => {
+
+
+  const handleViewChange = (view: 'matches' | 'leaderboard' | 'leagues' | 'knockout' | 'standings' | 'mystats') => {
+    // Navegar a una vista cierra la escena Inicio (si estaba abierta).
+    setShowFinalIntro(false);
     setCurrentView(view);
     if (view !== 'standings') {
       setSelectedGroup(undefined);
@@ -595,7 +730,26 @@ export default function App() {
 
   return (
     <>
-      <Layout
+      {/* Sincronizando Overlay: Se mantiene visible 600ms extra si la FinalIntro
+          se va a mostrar, permitiendo que haga su crossfade perfecto por encima. */}
+      {(!initialSyncDone || syncOverlayVisible) && (
+        <div className="fixed inset-0 z-[150] bg-black flex items-center justify-center overflow-hidden pointer-events-auto transition-opacity duration-300">
+          <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-50">
+            <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+              <source src="/video-intro.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px]" />
+          </div>
+          <div className="text-center space-y-3 relative z-10">
+            <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
+            <p className="text-sm font-bold text-white drop-shadow-md">Sincronizando...</p>
+          </div>
+        </div>
+      )}
+
+      {initialSyncDone && (
+        <>
+          <Layout
         currentView={currentView}
         onViewChange={handleViewChange}
         leagueCode={currentLeague?.invitationCode}
@@ -604,6 +758,8 @@ export default function App() {
         pendingCount={pendingApprovals.length}
         onOpenAdmin={() => setShowAdminPanel(true)}
         showActuBadge={showActu}
+        onOpenFinal={finalReady ? () => { setFinalDocked(true); setShowFinalIntro(true); } : undefined}
+        finalOpen={showFinalIntro}
       >
         {isLeagueAdmin && pendingApprovals.length > 0 && (
           <div className="mb-4 p-3 bg-accent/10 border-2 border-accent/40 rounded-xl flex items-center gap-3">
@@ -655,8 +811,19 @@ export default function App() {
         )}
         {currentView === 'leaderboard' && (
           <div className="max-w-3xl mx-auto">
-            <Leaderboard players={leaderboard} currentUserId={currentUser.id} currentLeague={currentLeague} accessToken={accessToken} knockoutTeams={knockoutTeams} />
+            <Leaderboard players={leaderboard} currentUserId={currentUser.id} currentLeague={currentLeague} accessToken={accessToken} knockoutTeams={knockoutTeams} matches={enrichedMatches} />
           </div>
+        )}
+        {currentView === 'mystats' && (
+          <MyStats
+            userName={currentUser?.nombre}
+            predictions={predictions}
+            matches={enrichedMatches}
+            leaderboard={leaderboard}
+            currentUserId={currentUser?.id}
+            leagueId={currentLeague?.id}
+            accessToken={accessToken}
+          />
         )}
       </Layout>
 
@@ -672,6 +839,38 @@ export default function App() {
           baseMatches={baseMatches}
         />
       )}
+
+      {/* Botón flotante "Gran Final": reabre la presentación cuando quieras.
+          Pareja del "Ir a Hoy" (ese vive abajo-derecha; este abajo-izquierda). */}
+      {finalReady && !showFinalIntro && (
+        <button
+          onClick={() => setShowFinalIntro(true)}
+          title="Presentación de la Gran Final"
+          aria-label="Ver presentación de la Gran Final"
+          className="final-fab fixed z-40 hidden md:flex bottom-8 left-8 items-center gap-2 rounded-full font-bold transition-transform hover:scale-105 active:scale-95 px-4 py-2.5 text-sm"
+        >
+          <Trophy className="w-3.5 h-3.5 md:w-4 md:h-4" />
+          Gran Final
+        </button>
+      )}
+
+      {showFinalIntro && finalMatch && (
+        <FinalIntro
+          match={finalMatch}
+          prediction={predictions[finalMatch.id]}
+          predictions={predictions}
+          onSavePrediction={handleSavePrediction}
+          leagueId={currentLeague?.id}
+          accessToken={accessToken}
+          currentUserId={currentUser?.id}
+          allMatches={enrichedMatches}
+          docked={finalDocked}
+          onContinue={() => { localStorage.setItem('polla_final_intro_seen', '1'); setFinalDocked(true); }}
+          onReplay={replayFinalIntro}
+          onClose={() => { localStorage.setItem('polla_final_intro_seen', '1'); setShowFinalIntro(false); }}
+        />
+      )}
+      </>)}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </>

@@ -8,8 +8,13 @@
   // Fuerza recarga si hay un deploy nuevo (evita quedarse en caché viejo).
   startVersionWatcher();
 
+  // Tema OSCURO forzado, aplicado ANTES del primer render → sin destello claro
+  // ni en la pantalla de "Sincronizando".
+  document.documentElement.classList.remove("light");
+  document.documentElement.classList.add("dark");
+
   createRoot(document.getElementById("root")!).render(
-    <ThemeProvider defaultTheme="system" storageKey="mundial-ui-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="mundial-ui-theme">
       <App />
     </ThemeProvider>
   );

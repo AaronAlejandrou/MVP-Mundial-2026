@@ -80,7 +80,7 @@ const MATCH_DATES: Record<number, string> = {
   97:'2026-07-09T15:00:00-05:00', 98:'2026-07-10T14:00:00-05:00',
   99:'2026-07-11T16:00:00-05:00', 100:'2026-07-11T20:00:00-05:00',
   101:'2026-07-14T14:00:00-05:00', 102:'2026-07-15T14:00:00-05:00',
-  103:'2026-07-18T17:00:00-05:00', 104:'2026-07-19T15:00:00-05:00',
+  103:'2026-07-18T16:00:00-05:00', 104:'2026-07-19T14:00:00-05:00',
 };
 
 function isMatchLocked(matchId: number): boolean {
@@ -635,7 +635,9 @@ const SPORTSDB_EVENT_IDS: Record<number, string> = {
   // eventsround no las encuentra; se verificaron vía eventsday (jul-2026).
   // 101 France-Spain (14:00) · 102 England-Argentina (14:00)
   101:"2528031", 102:"2528727",
-  // 103 (3er puesto, 18-jul) y 104 (final, 19-jul): aún sin publicar en la API.
+  // ── 3er puesto y FINAL — verificados vía eventsday (18/19-jul-2026).
+  // 103 France-England 21:00Z (16:00 Lima) · 104 Spain-Argentina 19:00Z (14:00 Lima)
+  103:"2533360", 104:"2533361",
 };
 
 // Ventana en minutos en la que consideramos un partido "potencialmente en vivo"

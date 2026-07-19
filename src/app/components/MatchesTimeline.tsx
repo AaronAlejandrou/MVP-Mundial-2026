@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { format, startOfDay, isSameDay, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trophy, ArrowDown } from 'lucide-react';
+import { Calendar, Trophy, ArrowDown, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { MatchCard } from './MatchCard';
 
 interface Match {
@@ -124,7 +124,18 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
 
   // Encontrar la primera fecha actual o futura comparando strings ISO directamente
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const currentDateIndex = sortedDates.findIndex(ds => ds >= todayStr);
+
+  // Partidos jugados COLAPSADOS (eficiencia): los días ANTERIORES a hoy no se
+  // montan (ni sus intervalos, ni sus banderas, ni sus cards) hasta que el
+  // usuario abra el historial con el botón. El filtro es por FECHA — decisión
+  // instantánea en el primer render, sin esperar resultados de la red.
+  const [showHistory, setShowHistory] = useState(false);
+  const activeDates = sortedDates.filter(ds => ds >= todayStr);
+  const pastDates = sortedDates.filter(ds => ds < todayStr);
+  const pastCount = pastDates.reduce((n, ds) => n + groupedMatches[ds].length, 0);
+
+  const currentDateIndex = activeDates.findIndex(ds => ds >= todayStr);
+  const todayDateStr = currentDateIndex !== -1 ? activeDates[currentDateIndex] : null;
 
   // Primer partido en vivo (en_curso, o dentro de la ventana de 120' desde el kickoff).
   const nowMs = Date.now();
@@ -162,6 +173,68 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // Renderiza el grupo de partidos de una fecha (se reusa para activos e historial).
+  const renderDateGroup = (dateString: string) => {
+    const dateMatches = groupedMatches[dateString];
+    const colors = getDateColor(dateString);
+
+    return (
+      <div
+        key={dateString}
+        ref={dateString === todayDateStr ? todayRef : null}
+        className="scroll-mt-24"
+      >
+        {/* Date Header */}
+        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <div
+            className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl shadow-sm border-2"
+            style={{
+              background: colors.bg,
+              color: colors.text,
+              borderColor: colors.border
+            }}
+          >
+            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="font-bold text-xs sm:text-sm capitalize">
+              {getDateLabel(dateString)}
+            </span>
+            <span className="text-xs opacity-75 hidden sm:inline">
+              ({dateMatches.length} {dateMatches.length === 1 ? 'partido' : 'partidos'})
+            </span>
+          </div>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {/* Matches Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {dateMatches
+            .sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime())
+            .map(match => {
+              const card = (
+                <MatchCard
+                  match={match}
+                  prediction={predictions[match.id]}
+                  onSavePrediction={onSavePrediction}
+                  onViewGroup={onViewGroup}
+                  onViewTeam={onViewTeam}
+                  leagueId={leagueId}
+                  accessToken={accessToken}
+                  currentUserId={currentUserId}
+                  allMatches={matches}
+                />
+              );
+              // El partido en vivo lleva un wrapper con ref (destino del botón flotante).
+              return match.id === liveMatchId ? (
+                <div key={match.id} ref={liveRef} className="scroll-mt-24">{card}</div>
+              ) : (
+                <div key={match.id}>{card}</div>
+              );
+            })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Sistema de Puntuación */}
@@ -191,67 +264,28 @@ export function MatchesTimeline({ matches, predictions, onSavePrediction, onView
         </div>
       </div>
 
-      {sortedDates.map((dateString, index) => {
-        const dateMatches = groupedMatches[dateString];
-        const colors = getDateColor(dateString);
-        const isCurrentOrNext = index === currentDateIndex;
+      {/* Partidos activos (hoy / por jugar) — la Gran Final al frente */}
+      {activeDates.map(renderDateGroup)}
 
-        return (
-          <div
-            key={dateString}
-            ref={isCurrentOrNext ? todayRef : null}
-            className="scroll-mt-24"
+      {/* Historial colapsado: los jugados no se montan hasta pedirlos */}
+      {pastDates.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowHistory(v => !v)}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-border bg-card/70 hover:bg-card transition-colors text-sm font-bold text-muted-foreground hover:text-foreground shadow-mundial"
           >
-            {/* Date Header */}
-            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-              <div
-                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl shadow-sm border-2"
-                style={{
-                  background: colors.bg,
-                  color: colors.text,
-                  borderColor: colors.border
-                }}
-              >
-                <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="font-bold text-xs sm:text-sm capitalize">
-                  {getDateLabel(dateString)}
-                </span>
-                <span className="text-xs opacity-75 hidden sm:inline">
-                  ({dateMatches.length} {dateMatches.length === 1 ? 'partido' : 'partidos'})
-                </span>
-              </div>
-              <div className="flex-1 h-px bg-border" />
+            <History className="w-4 h-4" />
+            {showHistory ? 'Ocultar partidos jugados' : `Ver partidos jugados (${pastCount})`}
+            {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showHistory && (
+            <div className="space-y-8 mt-8">
+              {/* Más recientes primero: así el historial se lee hacia atrás */}
+              {[...pastDates].reverse().map(renderDateGroup)}
             </div>
-
-            {/* Matches Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-              {dateMatches
-                .sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime())
-                .map(match => {
-                  const card = (
-                    <MatchCard
-                      match={match}
-                      prediction={predictions[match.id]}
-                      onSavePrediction={onSavePrediction}
-                      onViewGroup={onViewGroup}
-                      onViewTeam={onViewTeam}
-                      leagueId={leagueId}
-                      accessToken={accessToken}
-                      currentUserId={currentUserId}
-                      allMatches={matches}
-                    />
-                  );
-                  // El partido en vivo lleva un wrapper con ref (destino del botón flotante).
-                  return match.id === liveMatchId ? (
-                    <div key={match.id} ref={liveRef} className="scroll-mt-24">{card}</div>
-                  ) : (
-                    <div key={match.id}>{card}</div>
-                  );
-                })}
-            </div>
-          </div>
-        );
-      })}
+          )}
+        </div>
+      )}
 
       {/* Botón flotante contextual: salta al partido en vivo, o al día de hoy si no hay.
           Va por PORTAL a <body> para que `fixed` sea relativo al viewport (algún

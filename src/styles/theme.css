@@ -4,8 +4,8 @@
   /* Mundial 2026 - Paleta Minimalista (60-30-10) */
   --font-size: 16px;
 
-  /* === FONDOS (60%) === */
-  --background: #F4F6F8;
+  /* === FONDOS (60%) — papel lavanda: blanco con alma violeta === */
+  --background: #F5F4FA;
   --foreground: #1A1D26;
 
   --card: #FFFFFF;
@@ -15,8 +15,8 @@
 
   /* === TEXTOS Y ESTRUCTURA (30%) === */
   --text-primary: #1A1D26;
-  --text-secondary: #6B7280;
-  --border-color: #E5E7EB;
+  --text-secondary: #6C6885;
+  --border-color: #E5E2F0;
 
   /* === ACENTOS MUNDIALISTAS (10%) === */
   --mundial-purple: #7A28CB;
@@ -32,9 +32,9 @@
   --secondary: #48E5C2;
   --secondary-foreground: #1A1D26;
 
-  /* Muted - Grises sutiles */
-  --muted: #F4F6F8;
-  --muted-foreground: #6B7280;
+  /* Muted - Lavanda sutil */
+  --muted: #EFEDF6;
+  --muted-foreground: #6C6885;
 
   /* Accent - Lima */
   --accent: #A4EB33;
@@ -44,11 +44,11 @@
   --destructive: #E6005C;
   --destructive-foreground: #FFFFFF;
 
-  /* Borders - Sutiles */
-  --border: #E5E7EB;
-  --input: #E5E7EB;
+  /* Borders - Lavanda sutil */
+  --border: #E5E2F0;
+  --input: #E5E2F0;
   --input-background: #FFFFFF;
-  --switch-background: #E5E7EB;
+  --switch-background: #E5E2F0;
 
   /* Typography */
   --font-weight-medium: 500;
@@ -79,33 +79,36 @@
   --sidebar-border: #E5E7EB;
   --sidebar-ring: #7A28CB;
 
-  /* Gradientes Minimalistas (uso estratégico en el 10%) */
-  --gradient-primary: linear-gradient(135deg, #7A28CB 0%, #9F5FDB 100%);
-  --gradient-success: linear-gradient(135deg, #48E5C2 0%, #6EEFD4 100%);
-  --gradient-alert: linear-gradient(135deg, #E6005C 0%, #FF1A75 100%);
-  --gradient-perfect: linear-gradient(135deg, #A4EB33 0%, #C0F564 100%);
+  /* Gradientes Minimalistas (uso estratégico en el 10%) — 3 paradas para
+     más profundidad en los CTAs, mismo ADN morado/teal/lima */
+  --gradient-primary: linear-gradient(135deg, #6A1FB8 0%, #8B3BD9 55%, #A566E6 100%);
+  --gradient-success: linear-gradient(135deg, #2BC9A4 0%, #48E5C2 60%, #7FF0D8 100%);
+  --gradient-alert: linear-gradient(135deg, #C70050 0%, #E6005C 55%, #FF1A75 100%);
+  --gradient-perfect: linear-gradient(135deg, #8FD41F 0%, #A4EB33 60%, #C0F564 100%);
+  /* Firma de la casa: aurora morado → teal → lima */
+  --gradient-aurora: linear-gradient(120deg, #7A28CB 0%, #48E5C2 55%, #A4EB33 100%);
 
-  /* Blobs sutiles (solo para fondos decorativos) */
-  --blob-purple: rgba(122, 40, 203, 0.08);
-  --blob-cyan: rgba(72, 229, 194, 0.08);
-  --blob-fuscia: rgba(230, 0, 92, 0.08);
-  --blob-lime: rgba(164, 235, 51, 0.08);
+  /* Blobs sutiles (fondos decorativos y ambiente aurora) */
+  --blob-purple: rgba(122, 40, 203, 0.10);
+  --blob-cyan: rgba(72, 229, 194, 0.10);
+  --blob-fuscia: rgba(230, 0, 92, 0.09);
+  --blob-lime: rgba(164, 235, 51, 0.10);
 }
 
 .dark {
-  /* === FONDOS (60%) === */
-  --background: #0F172A;
+  /* === FONDOS (60%) — noche índigo con alma violeta === */
+  --background: #0D1022;
   --foreground: #F8FAFC;
 
-  --card: #1E293B;
+  --card: #171C33;
   --card-foreground: #F8FAFC;
-  --popover: #1E293B;
+  --popover: #1A1F38;
   --popover-foreground: #F8FAFC;
 
   /* === TEXTOS Y ESTRUCTURA (30%) === */
   --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --border-color: #334155;
+  --text-secondary: #9AA3C7;
+  --border-color: #2E3556;
 
   /* Primary - Morado Oficial (ligeramente más claro para dark mode) */
   --primary: #9F5FDB;
@@ -115,9 +118,9 @@
   --secondary: #48E5C2;
   --secondary-foreground: #0F172A;
 
-  /* Muted - Grises sutiles oscuros */
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
+  /* Muted - Índigo apagado */
+  --muted: #1E2440;
+  --muted-foreground: #9AA3C7;
 
   /* Accent - Lima */
   --accent: #A4EB33;
@@ -127,30 +130,33 @@
   --destructive: #E6005C;
   --destructive-foreground: #FFFFFF;
 
-  /* Borders - Oscuros */
-  --border: #334155;
-  --input: #334155;
-  --input-background: #1E293B;
-  --switch-background: #334155;
+  /* Borders - Índigo tenue */
+  --border: #2E3556;
+  --input: #2E3556;
+  --input-background: #171C33;
+  --switch-background: #2E3556;
 
   /* Ring/Focus */
   --ring: #9F5FDB;
 
   /* Sidebar */
-  --sidebar: #1E293B;
+  --sidebar: #171C33;
   --sidebar-foreground: #F8FAFC;
   --sidebar-primary: #9F5FDB;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #0F172A;
+  --sidebar-accent: #0D1022;
   --sidebar-accent-foreground: #F8FAFC;
-  --sidebar-border: #334155;
+  --sidebar-border: #2E3556;
   --sidebar-ring: #9F5FDB;
 
+  /* Gradiente primario más luminoso para CTAs sobre fondo oscuro */
+  --gradient-primary: linear-gradient(135deg, #7A28CB 0%, #9F5FDB 55%, #B487E8 100%);
+
   /* Blobs sutiles en modo oscuro (más opacos para destacar en fondo oscuro) */
-  --blob-purple: rgba(159, 95, 219, 0.15);
-  --blob-cyan: rgba(72, 229, 194, 0.15);
-  --blob-fuscia: rgba(230, 0, 92, 0.15);
-  --blob-lime: rgba(164, 235, 51, 0.15);
+  --blob-purple: rgba(159, 95, 219, 0.17);
+  --blob-cyan: rgba(72, 229, 194, 0.14);
+  --blob-fuscia: rgba(230, 0, 92, 0.14);
+  --blob-lime: rgba(164, 235, 51, 0.13);
 }
 
 @theme inline {
@@ -290,15 +296,58 @@
     -moz-appearance: textfield;
   }
 
-  /* Mundial 2026 - Sombras Minimalistas */
+  /* Mundial 2026 - Sombras con alma violeta (tinte de marca, no negro plano) */
   .shadow-mundial {
-    box-shadow: 0 1px 3px 0 rgba(26, 29, 38, 0.1),
-                0 1px 2px -1px rgba(26, 29, 38, 0.1);
+    box-shadow: 0 1px 3px 0 rgba(58, 28, 110, 0.10),
+                0 1px 2px -1px rgba(58, 28, 110, 0.08);
   }
 
   .shadow-mundial-lg {
-    box-shadow: 0 10px 15px -3px rgba(26, 29, 38, 0.1),
-                0 4px 6px -4px rgba(26, 29, 38, 0.1);
+    box-shadow: 0 12px 24px -6px rgba(58, 28, 110, 0.16),
+                0 4px 8px -4px rgba(58, 28, 110, 0.10);
+  }
+
+  /* En oscuro: sombra profunda + halo violeta sutil que "levanta" las cards */
+  .dark .shadow-mundial {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(159, 95, 219, 0.07);
+  }
+
+  .dark .shadow-mundial-lg {
+    box-shadow: 0 14px 30px -8px rgba(0, 0, 0, 0.55),
+                0 0 24px -10px rgba(159, 95, 219, 0.22);
+  }
+
+  /* Selección de texto con la marca */
+  ::selection {
+    background: rgba(122, 40, 203, 0.22);
+  }
+  .dark ::selection {
+    background: rgba(159, 95, 219, 0.38);
+  }
+
+  /* Scrollbar fina con tinte de marca (solo desktop / puntero fino) */
+  @media (pointer: fine) {
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(122, 40, 203, 0.28);
+      border-radius: 9999px;
+      border: 3px solid transparent;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(122, 40, 203, 0.45);
+      background-clip: padding-box;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: rgba(159, 95, 219, 0.30);
+      background-clip: padding-box;
+    }
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: rgba(159, 95, 219, 0.50);
+      background-clip: padding-box;
+    }
   }
 
   .text-gradient-mundial {
@@ -428,8 +477,16 @@
   --fab-shadow: rgba(244, 63, 94, 0.48);
   --fab-ring: rgba(244, 63, 94, 0.41);
 }
+/* Botón flotante "Gran Final" — dorado campeón, mismo glow que respira. */
+.final-fab {
+  background: linear-gradient(135deg, #B98A24 0%, #EAC65E 60%, #F5DE9C 100%);
+  color: #221703;
+  --fab-shadow: rgba(234, 198, 94, 0.52);
+  --fab-ring: rgba(234, 198, 94, 0.42);
+  animation: jump-fab-glow 3.2s ease-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
-  .jump-fab { animation: none; box-shadow: 0 6px 19px -6px var(--fab-shadow); }
+  .jump-fab, .final-fab { animation: none; box-shadow: 0 6px 19px -6px var(--fab-shadow); }
 }
 
 /* ── Beam para la tarjeta del partido más cercano (vista Eliminatorias) ──
@@ -518,4 +575,665 @@
 @media (prefers-reduced-motion: reduce) {
   .rank-card-gold::before, .rank-card-silver::before { animation: none; }
   .rank-shine::after { animation: none; left: -75%; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MATCHCARD · Banderas a SANGRE COMPLETA con corte diagonal reactivo.
+   La bandera de cada selección cubre su lado de la card; el punto de corte
+   (--vs-mid) responde al marcador: quien va ganando "invade" el espacio del
+   rival, con transición suave. Arquitectura anti-mancha: la bandera A es la
+   BASE (sin máscara, siempre cubre) y la B va ENCIMA enmascarada — en la
+   unión nunca asoma el fondo. Hacia abajo las banderas se desvanecen
+   (máscara vertical) para que resultado/puntos se lean sobre la card limpia.
+   El velo es distinto por modo (claro lava, oscuro atenúa).
+   ══════════════════════════════════════════════════════════════════════ */
+@property --vs-mid {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 50%;
+}
+.vs-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  --vs-mid: 50%;
+  transition: --vs-mid 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 46%, rgba(0, 0, 0, 0.28) 72%, transparent 94%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 46%, rgba(0, 0, 0, 0.28) 72%, transparent 94%);
+}
+/* Dos modos:
+   · PENDIENTE (pronosticando): banderas NÍTIDAS — se lucen tal cual, con
+     corte limpio y una costura de luz fina en la unión (ver .vs-seam).
+   · FINALIZADO (.vs-finished): lavado de color (blur moderado) — el partido
+     ya pasó, la bandera se vuelve fondo elegante y el resultado protagoniza. */
+.vs-bg-flag {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transform: translateZ(0);
+}
+.vs-finished .vs-bg-flag {
+  inset: -8%;   /* expande la capa: los bordes difuminados caen fuera de la card */
+  filter: blur(10px) saturate(1.08);
+}
+/* Bandera B (derecha): capa superior enmascarada. Corte NÍTIDO (banda de
+   mezcla mínima) para que los colores de ambas no se ensucien entre sí. */
+.vs-bg-b {
+  -webkit-mask-image: linear-gradient(104deg, transparent calc(var(--vs-mid) - 1.5%), #000 calc(var(--vs-mid) + 1.5%));
+          mask-image: linear-gradient(104deg, transparent calc(var(--vs-mid) - 1.5%), #000 calc(var(--vs-mid) + 1.5%));
+}
+/* Costura de luz: hairline diagonal en el punto de corte — hace que el
+   encuentro de las dos banderas se lea deliberado (gráfica deportiva), no
+   como choque. Sigue a --vs-mid con la misma transición del padre. */
+.vs-seam {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(104deg,
+    transparent calc(var(--vs-mid) - 0.6%),
+    rgba(255, 255, 255, 0.45) var(--vs-mid),
+    transparent calc(var(--vs-mid) + 0.6%));
+}
+.dark .vs-seam {
+  background: linear-gradient(104deg,
+    transparent calc(var(--vs-mid) - 0.6%),
+    rgba(255, 255, 255, 0.30) var(--vs-mid),
+    transparent calc(var(--vs-mid) + 0.6%));
+}
+/* Velo de legibilidad, uniforme (sin manchas). Tema claro: lava hacia blanco.
+   Tema oscuro: atenúa hacia el slate del fondo. */
+.vs-bg-veil {
+  position: absolute;
+  inset: 0;
+  background: rgba(244, 246, 248, 0.55);
+}
+.dark .vs-bg-veil {
+  background: rgba(13, 16, 34, 0.58);
+}
+
+/* ── Ambiente "aurora" de la casa: halos morado/teal/lima muy sutiles que dan
+   profundidad a todas las pantallas. Estático → costo de pintura único. */
+.app-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(46% 38% at 10% 6%, var(--blob-purple), transparent 70%),
+    radial-gradient(42% 36% at 90% 88%, var(--blob-cyan), transparent 70%),
+    radial-gradient(28% 24% at 82% 10%, var(--blob-lime), transparent 72%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   INTRO "LA GRAN FINAL" — takeover cinemático tras sincronizar.
+   Fondo noche + aurora viva; el contenido entra escalonado (eyebrow →
+   título con shimmer dorado → banderas desde los costados → VS → countdown).
+   Todo transform/opacity → GPU. Un tap lo cierra.
+   ══════════════════════════════════════════════════════════════════════ */
+.final-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(122, 40, 203, 0.22), transparent 60%),
+    #0A0C1C;
+  animation: fi-in 0.5s ease-out;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Fase 1 → 2: el hero se aparta hacia arriba y la card sube desde abajo,
+   sobre el MISMO fondo (lavados + aurora se quedan). */
+.fi-stage {
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+}
+.fi-stage-up {
+  transform: translateY(-48px);
+  opacity: 0;
+  pointer-events: none;
+}
+.fi-card {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px 16px 96px;
+  overflow-y: auto;
+  opacity: 0;
+  transform: translateY(64px);
+  pointer-events: none;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.12s, opacity 0.5s ease 0.12s;
+}
+.fi-card > * {
+  width: 100%;
+  max-width: 430px;
+  margin-left: auto;
+  margin-right: auto;
+}
+/* Historial: contenido alineado ARRIBA (no centrado) para que la primera card
+   nunca quede "encima" del encabezado, y con aire para no chocar con los
+   controles flotantes superiores.
+   Fondo SÓLIDO igual al resto de la app (cubre los lavados cinemáticos) +
+   la misma aurora ambiente sutil de la casa. */
+.fi-card.fi-card-history {
+  justify-content: flex-start;
+  padding-top: 0;
+  background:
+    radial-gradient(46% 38% at 10% 6%, var(--blob-purple), transparent 70%),
+    radial-gradient(42% 36% at 90% 88%, var(--blob-cyan), transparent 70%),
+    radial-gradient(28% 24% at 82% 10%, var(--blob-lime), transparent 72%),
+    var(--background);
+}
+/* El header sticky del historial debe ser full-width (la regla fi-card > *
+   lo limita a 430px, creando un recuadro visible). Totalmente transparente
+   porque el efecto de cristal (blur) irá solo en los botones. */
+.fi-hist-header {
+  max-width: none !important;
+  background: transparent;
+}
+.fi-card-in {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.fi-chevron { animation: fi-bounce 1.6s 1.8s ease-in-out infinite; }
+@keyframes fi-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(6px); }
+}
+
+/* ── Fase 2 · escenario premium de pronóstico ── */
+.fi-duel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+}
+.fi-float {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.fi-flag-glow {
+  filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.28)) drop-shadow(0 10px 22px rgba(0, 0, 0, 0.45));
+}
+.fi-duel-vs { flex-shrink: 0; }
+/* Camino a la final: chips de resultados por fase */
+.fi-road {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  max-width: 150px;
+}
+.fi-chip {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.fi-chip b {
+  color: #fff;
+  font-weight: 800;
+  margin-left: 2px;
+}
+/* Marco de la MatchCard: sin borde dorado — solo sombra profunda que la
+   despega del fondo. La card gala (vidrio + hairline neutro) hace el resto. */
+.fi-card-frame {
+  border-radius: 1rem;
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.6);
+}
+/* Salida hacia arriba (fase que se aparta al avanzar) */
+.fi-out-up {
+  opacity: 0;
+  transform: translateY(-48px);
+  pointer-events: none;
+}
+/* ── Fase "El camino a la final" · bracket convergente ──
+   Un solo panel de vidrio a todo lo ancho: fases al centro (columna
+   vertebral dorada), resultados espejados a los lados, y la copa como
+   punto de convergencia abajo. */
+.fi-road2 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 14px 16px;
+  border-radius: 20px;
+  background: rgba(10, 10, 26, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+.fi-road2-row {
+  display: grid;
+  grid-template-columns: 1fr 78px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.fi-road2-head { grid-template-columns: 1fr 40px 1fr; margin-bottom: 2px; }
+.fi-road2-vs { text-align: center; }
+.fi-road2-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Columna vertebral dorada que une las fases y desemboca en la copa */
+.fi-road2-spine {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  bottom: 24px;
+  width: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(241, 208, 124, 0.45) 12%,
+    rgba(241, 208, 124, 0.45) 88%,
+    transparent 100%);
+}
+.fi-road2-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+}
+/* Ancho FIJO y centrado: así las banderas y los marcadores forman columnas
+   perfectamente rectas a ambos lados, sin importar los dígitos. */
+.fi-road2-score {
+  width: 46px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: #F5DE9C;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.fi-road2-fase {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(14, 13, 30, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 4px 2px;
+}
+.fi-road2-end {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+/* Cierre de la vertebral: MINIMALISTA — solo el trofeo en línea dorada con
+   un resplandor sutil. Sin círculos, sin bordes, sin rellenos. */
+.fi-road2-cup {
+  display: grid;
+  place-items: center;
+  color: #F1D07C;
+  filter: drop-shadow(0 0 10px rgba(241, 208, 124, 0.45));
+}
+/* Cascada al entrar la fase (delay por fila vía style inline) */
+.fi-card-in .fi-road2-row,
+.fi-card-in .fi-road2-end { animation: fi-rise 0.5s both ease-out; }
+/* Polvo dorado que asciende (decorativo, 6 partículas) */
+.fi-dust {
+  position: absolute;
+  inset: 0;
+  max-width: none;
+  pointer-events: none;
+  overflow: hidden;
+}
+.fi-dust span {
+  position: absolute;
+  bottom: -8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #F1D07C;
+  opacity: 0;
+  animation: fi-dust-rise 7s linear infinite;
+}
+.fi-dust span:nth-child(1) { left: 12%; animation-delay: 0s; }
+.fi-dust span:nth-child(2) { left: 28%; animation-delay: 2.4s; width: 3px; height: 3px; }
+.fi-dust span:nth-child(3) { left: 46%; animation-delay: 4.8s; }
+.fi-dust span:nth-child(4) { left: 62%; animation-delay: 1.2s; width: 3px; height: 3px; }
+.fi-dust span:nth-child(5) { left: 78%; animation-delay: 3.6s; }
+.fi-dust span:nth-child(6) { left: 90%; animation-delay: 6s; width: 5px; height: 5px; }
+@keyframes fi-dust-rise {
+  0%   { transform: translateY(0); opacity: 0; }
+  12%  { opacity: 0.55; }
+  85%  { opacity: 0.25; }
+  100% { transform: translateY(-105vh); opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MATCHCARD · Skin "GALA" (.mc-gala) — solo en la escena de la Gran Final.
+   Vidrio oscuro translúcido (los lavados de la escena se ven a través),
+   controles y marcadores en oro, chips en glass. Sobrescribe utilidades
+   internas de la card sin tocar su lógica; theme.css carga después de
+   tailwind, así los overrides sobre el mismo elemento ganan.
+   ══════════════════════════════════════════════════════════════════════ */
+.mc-gala {
+  background: rgba(16, 13, 36, 0.62);
+  border-color: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+/* Header interno: glass sutil en vez de sólido */
+.mc-gala .z-10 > div:first-child {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+/* Textos base sobre el vidrio */
+.mc-gala .text-foreground { color: #FFFFFF; }
+.mc-gala .text-muted-foreground { color: rgba(255, 255, 255, 0.55); }
+.mc-gala .text-primary { color: #F1D07C; }
+/* Botones + y CTA Guardar: oro campeón con texto profundo */
+.mc-gala .bg-primary {
+  background: linear-gradient(135deg, #B98A24 0%, #EAC65E 60%, #F5DE9C 100%);
+  color: #221703;
+}
+/* Botones − : glass neutro */
+.mc-gala [class*="bg-muted/90"] {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+}
+/* Cajas del marcador: vidrio profundo con borde y dígitos de oro */
+.mc-gala .font-score[class*="border-2"] {
+  background: rgba(8, 8, 22, 0.65);
+  border-color: rgba(241, 208, 124, 0.45);
+  color: #F5DE9C;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* Chips del header (Stats / fase / Ver todos): glass uniforme */
+.mc-gala [class*="bg-primary/10"] {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
+}
+.mc-gala .bg-muted {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #F5DE9C;
+}
+/* Salida "pro": la escena entera se eleva levemente y se funde hacia la app */
+.final-intro-out {
+  opacity: 0;
+  transform: translateY(-3%) scale(0.985);
+  pointer-events: none;
+}
+/* Modo ANCLADO: la escena queda como vista Inicio permanente, por DEBAJO de
+   los navs (z-50) para que las opciones aparezcan encima. El contenido de
+   la fase de pronóstico deja aire para el bottom nav + botonera. */
+.final-intro-docked { z-index: 40; }
+.final-intro-docked .fi-card { padding-bottom: 170px; }
+
+/* ── Botonera inferior fija de la escena ──
+   En inmersivo pega al borde inferior; al anclarse SUBE por encima del bottom
+   nav con transición (parte del "morph"). */
+.fi-bottom {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: bottom 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (max-width: 767px) {
+  .final-intro-docked .fi-bottom { bottom: calc(96px + env(safe-area-inset-bottom)); }
+}
+.fi-bottom-btn {
+  width: 100%;
+  max-width: 430px;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 14px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+/* Fase 1 del morph: el dorado se desvanece encogiéndose */
+.fi-btn-fade { opacity: 0; transform: scale(0.94); }
+/* Fase 2 del morph: el fantasma entra elevándose */
+.fi-ghost-btn {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: fi-rise 0.45s both ease-out;
+}
+.fi-ghost-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.fi-invite {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+  animation: fi-rise 0.5s 0.15s both ease-out;
+}
+.fi-invite b { color: #F1D07C; }
+
+/* ── Mis Stats: cascada de entrada (reusa fi-rise) ── */
+.ms-rise { animation: fi-rise 0.5s both ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .ms-rise { animation: none; }
+}
+
+/* ── Ranking: ceremonia de cierre (takeover cinemático sobre la tabla) ── */
+.rank-ceremony {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 40px 0;
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(122, 40, 203, 0.22), transparent 60%),
+    #0A0C1C;
+  animation: fi-in 0.5s ease-out;
+}
+.rank-ceremony-out {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+/* ── Mis Stats · MODO SLIDES (primera vez): experiencia tipo Inicio.
+   Takeover bajo los navs (z-40), fondo noche + aurora + polvo; cada slide
+   entra desde abajo y sale hacia arriba al avanzar (mismo lenguaje que la
+   escena de la Gran Final). ── */
+.mss {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  cursor: pointer;
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(122, 40, 203, 0.22), transparent 60%),
+    #0A0C1C;
+  animation: fi-in 0.4s ease-out;
+}
+.mss-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 56px 20px 120px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(56px);
+  pointer-events: none;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+}
+.mss-slide.is-active {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.mss-slide.is-past {
+  opacity: 0;
+  transform: translateY(-48px);
+}
+.mss-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.mss-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mss { animation: none; }
+  .mss-slide { transition: none; }
+}
+/* CTA Continuar: oro campeón */
+.fi-next {
+  background: linear-gradient(135deg, #B98A24 0%, #EAC65E 60%, #F5DE9C 100%);
+  color: #221703;
+  box-shadow: 0 10px 28px -10px rgba(234, 198, 94, 0.55);
+}
+/* Lavados de bandera: cada finalista tiñe su mitad de la pantalla con los
+   colores de su bandera (blur fuerte → aura de color, no imagen literal). */
+/* --fiw-mid: punto de corte de los lavados. Se desplaza (70/30) hacia el lado
+   del ganador que elijas, con transición suave. */
+@property --fiw-mid {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 50%;
+}
+.fi-wash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  --fiw-mid: 50%;
+  transition: --fiw-mid 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: fi-wash-in 1.4s 0.25s forwards ease-out;
+}
+.fi-wash-a,
+.fi-wash-b {
+  position: absolute;
+  inset: -12%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(42px) saturate(1.2) brightness(0.7);
+  transform: translateZ(0);
+}
+.fi-wash-a {
+  -webkit-mask-image: linear-gradient(104deg, #000 calc(var(--fiw-mid) - 10%), transparent calc(var(--fiw-mid) + 10%));
+          mask-image: linear-gradient(104deg, #000 calc(var(--fiw-mid) - 10%), transparent calc(var(--fiw-mid) + 10%));
+}
+.fi-wash-b {
+  -webkit-mask-image: linear-gradient(104deg, transparent calc(var(--fiw-mid) - 10%), #000 calc(var(--fiw-mid) + 10%));
+          mask-image: linear-gradient(104deg, transparent calc(var(--fiw-mid) - 10%), #000 calc(var(--fiw-mid) + 10%));
+}
+@keyframes fi-wash-in { to { opacity: 0.55; } }
+
+.fi-aurora {
+  position: absolute;
+  inset: -22%;
+  background:
+    radial-gradient(36% 30% at 22% 24%, rgba(122, 40, 203, 0.38), transparent 70%),
+    radial-gradient(32% 28% at 80% 72%, rgba(72, 229, 194, 0.22), transparent 70%),
+    radial-gradient(24% 20% at 72% 16%, rgba(164, 235, 51, 0.14), transparent 72%);
+  animation: fi-aurora 8s ease-in-out infinite alternate;
+}
+.fi-eyebrow { animation: fi-rise 0.6s 0.15s backwards ease-out; }
+.fi-title {
+  background: linear-gradient(100deg, #F8FAFC 0%, #F8FAFC 36%, #F1D07C 50%, #F8FAFC 64%, #F8FAFC 100%);
+  background-size: 230% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: fi-rise 0.7s 0.3s backwards ease-out, fi-shimmer 3s 1.4s ease-in-out infinite;
+}
+.fi-team-l { animation: fi-slide-l 0.65s 0.6s backwards cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+.fi-team-r { animation: fi-slide-r 0.65s 0.6s backwards cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+.fi-vs   { animation: fi-pop 0.5s 1s backwards cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+.fi-count { animation: fi-rise 0.6s 1.25s backwards ease-out; }
+.fi-hint  { animation: fi-rise 0.6s 1.5s backwards ease-out, fi-blink 2.2s 2s ease-in-out infinite; }
+
+@keyframes fi-in { from { opacity: 0; } }
+@keyframes fi-rise { from { opacity: 0; transform: translateY(16px); } }
+@keyframes fi-slide-l { from { opacity: 0; transform: translateX(-56px) scale(0.85); } }
+@keyframes fi-slide-r { from { opacity: 0; transform: translateX(56px) scale(0.85); } }
+@keyframes fi-pop { from { opacity: 0; transform: scale(2.4); } }
+@keyframes fi-aurora {
+  from { transform: rotate(-4deg) scale(1); }
+  to   { transform: rotate(4deg) scale(1.12); }
+}
+@keyframes fi-shimmer {
+  0%   { background-position: 135% 0; }
+  100% { background-position: -135% 0; }
+}
+@keyframes fi-blink {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .final-intro, .fi-aurora, .fi-eyebrow, .fi-title, .fi-team-l, .fi-team-r, .fi-vs, .fi-count, .fi-hint {
+    animation: none;
+  }
+  .fi-wash { animation: none; opacity: 0.55; }
+  .fi-chevron { animation: none; }
+  .fi-stage, .fi-card { transition: none; }
+  .fi-dust span { animation: none; }
+  .fi-card-in .fi-road2-row, .fi-card-in .fi-road2-end { animation: none; }
+  .fi-out-up { transition: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vs-bg { transition: none; }
+}
+
+/* ── Rendimiento mobile: las cards fuera de pantalla no se pintan ──
+   Solo en mobile: en desktop las hover-cards absolutas de equipos quedarían
+   recortadas por el paint containment. contain-intrinsic-size ≈ alto típico
+   de una card para que el scrollbar no salte. */
+@media (max-width: 767px) {
+  .match-cv {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 340px;
+  }
 }

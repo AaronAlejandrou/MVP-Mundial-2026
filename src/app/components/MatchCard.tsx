@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Lock, Check, Clock, MapPin, Trophy, Plus, Minus, Table2, ChevronRight, BarChart2, Users } from 'lucide-react';
 import { format } from 'date-fns';
-import { CountryFlag } from './CountryFlag';
+import { CountryFlag, flagUrlFor } from './CountryFlag';
+import { teamColors } from './teamColors';
 import { GroupHoverCard } from './GroupHoverCard';
 import { TeamHoverCard } from './TeamHoverCard';
 import { MatchPredictionsModal } from './MatchPredictionsModal';
@@ -118,13 +119,32 @@ interface MatchCardProps {
   accessToken?: string;
   currentUserId?: string;
   allMatches?: Match[];
+  /** Skin "gala" (escena de la Gran Final): vidrio oscuro + controles dorados. */
+  premium?: boolean;
+  /** Notifica cada cambio del marcador elegido (para efectos del contenedor). */
+  onScoreChange?: (golesA: number, golesB: number) => void;
+  /** En empate, pregunta "¿quién gana?" antes de guardar (solo celebración). */
+  askWinnerOnDraw?: boolean;
+  /** El equipo elegido como ganador en el popup de empate. */
+  onDrawWinner?: (team: string) => void;
 }
 
-export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, onViewTeam, leagueId, accessToken, currentUserId, allMatches }: MatchCardProps) {
-  const [golesA, setGolesA] = useState<number>(prediction?.goles_a || 0);
-  const [golesB, setGolesB] = useState<number>(prediction?.goles_b || 0);
+export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, onViewTeam, leagueId, accessToken, currentUserId, allMatches, premium = false, onScoreChange, askWinnerOnDraw = false, onDrawWinner }: MatchCardProps) {
+  const [golesA, setGolesA] = useState<number>(0);
+  const [golesB, setGolesB] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  // El usuario tocó el marcador de ESTA card: activa el efecto reactivo de las
+  // banderas de fondo aun antes de guardar.
+  const [touched, setTouched] = useState(false);
+  // Popup "¿quién gana la final?" al guardar un empate (solo celebración).
+  const [askWinner, setAskWinner] = useState(false);
+
+  // Reporta cada cambio del marcador al contenedor (efectos de la escena).
+  useEffect(() => {
+    onScoreChange?.(golesA, golesB);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [golesA, golesB]);
   const [showGroupHover, setShowGroupHover] = useState(false);
   const [showTeamAHover, setShowTeamAHover] = useState(false);
   const [showTeamBHover, setShowTeamBHover] = useState(false);
@@ -252,12 +272,6 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     return 'text-rose-400/90';
   }, [minutesUntilMatch, isLocked, prediction]);
 
-  useEffect(() => {
-    if (prediction) {
-      setGolesA(prediction.goles_a);
-      setGolesB(prediction.goles_b);
-    }
-  }, [prediction]);
 
   const dismissDot = (key: string, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
     localStorage.setItem(key, '1');
@@ -265,12 +279,30 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     window.dispatchEvent(new Event('polla_dot_dismissed'));
   };
 
-  const handleSave = async () => {
-    if (!onSavePrediction || isLocked) return;
+  // Confeti de celebración al guardar: colores de la selección ganadora (o de
+  // ambas si es empate sin elección). Import dinámico — no pesa hasta usarse.
+  const fireConfetti = async (team?: string | null) => {
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+      const confetti = (await import('canvas-confetti')).default;
+      const colors = team
+        ? teamColors(team)
+        : [...teamColors(match.equipo_a), ...teamColors(match.equipo_b)];
+      const base = { spread: 78, ticks: 240, scalar: 0.95, colors, zIndex: 400 };
+      confetti({ ...base, particleCount: 110, origin: { x: 0.5, y: 0.7 }, startVelocity: 45 });
+      confetti({ ...base, particleCount: 60, angle: 60, origin: { x: 0.08, y: 0.85 } });
+      confetti({ ...base, particleCount: 60, angle: 120, origin: { x: 0.92, y: 0.85 } });
+    } catch { /* silent */ }
+  };
+
+  const doSave = async (celebrationTeam?: string | null) => {
+    if (!onSavePrediction) return;
     setIsSaving(true);
     try {
       await onSavePrediction(match.id, golesA, golesB);
       setIsSaved(true);
+      setHasSavedSession(true);
+      fireConfetti(celebrationTeam);
       setTimeout(() => setIsSaved(false), 2000);
     } catch (error) {
       console.error('Error saving prediction:', error);
@@ -279,21 +311,34 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     }
   };
 
+  const handleSave = () => {
+    if (!onSavePrediction || isLocked) return;
+    // Empate + modo pregunta: primero elige al campeón (solo celebración).
+    if (askWinnerOnDraw && golesA === golesB) {
+      setAskWinner(true);
+      return;
+    }
+    doSave(golesA > golesB ? match.equipo_a : golesB > golesA ? match.equipo_b : null);
+  };
+
   const hasChanges = () => {
     if (!prediction) return true;
     return golesA !== prediction.goles_a || golesB !== prediction.goles_b;
   };
 
-  const canSave = !isLocked && hasChanges() && !isSaving;
+  const [hasSavedSession, setHasSavedSession] = useState(false);
+  const canSave = !isLocked && (!hasSavedSession || hasChanges()) && !isSaving;
 
   const increment = (team: 'a' | 'b') => {
     if (isLocked) return;
+    setTouched(true);
     if (team === 'a') setGolesA(prev => Math.min(prev + 1, 99));
     else setGolesB(prev => Math.min(prev + 1, 99));
   };
 
   const decrement = (team: 'a' | 'b') => {
     if (isLocked) return;
+    setTouched(true);
     if (team === 'a') setGolesA(prev => Math.max(prev - 1, 0));
     else setGolesB(prev => Math.max(prev - 1, 0));
   };
@@ -333,11 +378,70 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
     window.open(url, '_blank', 'noopener');
   };
 
+  // ── Banderas de fondo con corte reactivo al marcador ──────────────────────
+  const flagAUrl = flagUrlFor(match.equipo_a);
+  const flagBUrl = flagUrlFor(match.equipo_b);
+
+  const predDiff = golesA - golesB;             // >0 gana A (izq), <0 gana B (der)
+  // Tres estados por lado: empate = medio (50). Ganar por 1–2 goles = invade
+  // 3/4 (75/25). Ganar por 3+ = toma la card completa (106/-6 empuja el corte
+  // fuera de la card).
+  const winnerMid = (d: number) =>
+    d === 0 ? 50 : d > 0 ? (d >= 3 ? 106 : 75) : (d <= -3 ? -6 : 25);
+
+  // En una eliminatoria ya jugada, "el que clasificó" = el equipo de esta llave
+  // que aparece en una ronda posterior (el bracket avanza al ganador).
+  const knockoutQualifier = (): string | null => {
+    if (match.id < 73 || !allMatches) return null;
+    for (const m of allMatches) {
+      if (m.id <= match.id || m.id < 73) continue;
+      // El 3er lugar (103) es la llave de PERDEDORES de semis: aparecer ahí
+      // significa que NO clasificaste — no cuenta como avance.
+      if (m.id === 103) continue;
+      if (m.equipo_a === match.equipo_a || m.equipo_b === match.equipo_a) return match.equipo_a;
+      if (m.equipo_a === match.equipo_b || m.equipo_b === match.equipo_b) return match.equipo_b;
+    }
+    return null;
+  };
+
+  let vsMid = 50;
+  if (match.estado === 'finalizado') {
+    // Congelado en el resultado real.
+    const rDiff = (match.goles_a ?? 0) - (match.goles_b ?? 0);
+    if (rDiff !== 0) vsMid = winnerMid(rDiff);
+    else if (match.id >= 73) {
+      // Empate al 90' en eliminatoria → manda quién clasificó.
+      const q = knockoutQualifier();
+      vsMid = q === match.equipo_a ? 75 : q === match.equipo_b ? 25 : 50;
+    }
+    // Empate real en fase de grupos → queda al medio.
+  } else if (touched || prediction) {
+    // Refleja el marcador que estás pronosticando.
+    vsMid = winnerMid(predDiff);
+  }
+
   return (
-    <div className="relative w-full">
-      <div className="bg-card rounded-xl shadow-mundial border border-border overflow-hidden transition-all duration-300 hover:shadow-mundial-lg max-w-full">
+    <div className="match-cv relative w-full">
+      <div className={`relative isolate bg-card rounded-xl shadow-mundial border border-border overflow-hidden transition-all duration-300 hover:shadow-mundial-lg max-w-full ${premium ? 'mc-gala' : ''}`}>
+        {/* Banderas a sangre completa: A es base, B encima enmascarada; el corte
+            (--vs-mid) responde al marcador y transiciona suave. En el skin gala
+            se omiten (la escena ya tiene los lavados de bandera de fondo). */}
+        {!premium && (
+          <div
+            className={`vs-bg ${match.estado === 'finalizado' ? 'vs-finished' : ''}`}
+            aria-hidden="true"
+            style={{ '--vs-mid': `${vsMid}%` } as React.CSSProperties}
+          >
+            {flagAUrl && <div className="vs-bg-flag" style={{ backgroundImage: `url("${flagAUrl}")` }} />}
+            {flagBUrl && <div className="vs-bg-flag vs-bg-b" style={{ backgroundImage: `url("${flagBUrl}")` }} />}
+            <div className="vs-bg-veil" />
+            {match.estado !== 'finalizado' && <div className="vs-seam" />}
+          </div>
+        )}
+
+        <div className="relative z-10">
         {/* Header */}
-        <div className="px-3 sm:px-5 py-2 sm:py-3 border-b border-border bg-muted">
+        <div className="px-3 sm:px-5 py-2 sm:py-3 border-b border-border/50 bg-background/80">
           <div className="flex items-center justify-between flex-wrap gap-1 sm:gap-2">
             <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm flex-1 min-w-0">
               <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
@@ -668,6 +772,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Hover Cards */}
@@ -698,6 +803,39 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
           style={{ animation: 'fadeIn 0.2s ease-out, zoomIn 0.2s ease-out' }}>
           <TeamHoverCard team={match.equipo_b} recentMatches={getTeamRecent(match.equipo_b)} />
         </div>
+      )}
+
+      {/* Popup empate: elige al campeón para la celebración (el pronóstico se
+          guarda igual con el marcador empatado) */}
+      {askWinner && createPortal(
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6" onClick={() => setAskWinner(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="ms-rise relative w-full max-w-sm rounded-3xl border border-white/15 bg-[#12102A]/95 p-6 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/60 mb-1">
+              Empataste {golesA}–{golesB}
+            </p>
+            <p className="text-xl font-black text-white mb-5">¿Y quién levanta la copa?</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[match.equipo_a, match.equipo_b].map(team => (
+                <button
+                  key={team}
+                  onClick={() => { setAskWinner(false); onDrawWinner?.(team); doSave(team); }}
+                  className="flex flex-col items-center gap-2 py-4 rounded-2xl bg-white/8 border border-white/15 hover:bg-white/15 transition-colors"
+                >
+                  <CountryFlag country={team} size="lg" />
+                  <span className="text-sm font-black text-white">{team}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] font-bold text-white/40 mt-4">
+              Tu pronóstico se guarda {golesA}–{golesB} · esto es solo para la celebración
+            </p>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal de predicciones */}

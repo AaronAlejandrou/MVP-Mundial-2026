@@ -1,21 +1,24 @@
 import { ReactNode, useState } from 'react';
-import { Trophy, Calendar, Users, Menu, X, LogOut, Award, Table2, Shield } from 'lucide-react';
+import { Trophy, Calendar, Users, Menu, X, LogOut, Award, Table2, Shield, Home, BarChart3 } from 'lucide-react';
 import imgLogo from '../../imports/2026_FIFA_World_Cup_Logo_2023-s2560.png';
-import { ThemeToggle } from './ThemeToggle';
 
 interface LayoutProps {
   children: ReactNode;
-  currentView: 'matches' | 'leaderboard' | 'leagues' | 'knockout' | 'standings';
-  onViewChange: (view: 'matches' | 'leaderboard' | 'leagues' | 'knockout' | 'standings') => void;
+  currentView: 'matches' | 'leaderboard' | 'leagues' | 'knockout' | 'standings' | 'mystats';
+  onViewChange: (view: 'matches' | 'leaderboard' | 'leagues' | 'knockout' | 'standings' | 'mystats') => void;
   leagueCode?: string;
   onLogout?: () => void;
   isAdmin?: boolean;
   pendingCount?: number;
   onOpenAdmin?: () => void;
   showActuBadge?: boolean;
+  /** Abre la escena "Inicio · Gran Final" (visible mientras la final esté por jugarse). */
+  onOpenFinal?: () => void;
+  /** La escena Inicio está abierta (marca la pestaña como activa). */
+  finalOpen?: boolean;
 }
 
-export function Layout({ children, currentView, onViewChange, leagueCode, onLogout, isAdmin, pendingCount = 0, onOpenAdmin, showActuBadge = false }: LayoutProps) {
+export function Layout({ children, currentView, onViewChange, leagueCode, onLogout, isAdmin, pendingCount = 0, onOpenAdmin, showActuBadge = false, onOpenFinal, finalOpen = false }: LayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Badge rojo "¡Actu!" que invita a entrar a Eliminatorias. Desaparece al entrar.
@@ -32,12 +35,24 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
           <source src="/video-intro.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px]" />
+        <div className="app-ambient" />
       </div>
 
-      {/* Controles flotantes (solo mobile): reemplazan al header para no gastar espacio.
-          La navegación ya vive en el bottom nav; aquí solo quedan tema + salir. */}
+      {/* Controles flotantes (solo mobile): a la izquierda "Ir a la Gran Final"
+          (en todas las vistas salvo cuando ya estás en la escena Final); a la
+          derecha, salir. El toggle de tema se eliminó (tema oscuro forzado). */}
       <div className="md:hidden fixed top-2 right-2 z-50 flex items-center gap-0.5 rounded-full bg-background/60 backdrop-blur-xl border border-border/60 shadow-lg px-1">
-        <ThemeToggle />
+        {onOpenFinal && !finalOpen && (
+          <button
+            onClick={onOpenFinal}
+            aria-label="Ir a la Gran Final"
+            title="Ir a la Gran Final"
+            className="h-10 flex items-center gap-1.5 pl-2.5 pr-3 rounded-full text-[#EAC65E] hover:bg-[#EAC65E]/10 transition-all"
+          >
+            <Trophy className="w-[18px] h-[18px]" />
+            <span className="text-xs font-bold">Final</span>
+          </button>
+        )}
         {onLogout && (
           <button
             onClick={onLogout}
@@ -83,34 +98,54 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
                   </div>
                 </div>
               )}
+              {/* Inicio (Gran Final) */}
+              {onOpenFinal && (
+                <button
+                  onClick={onOpenFinal}
+                  className={`px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
+                    finalOpen ? 'scale-105' : 'hover:scale-105'
+                  }`}
+                  style={
+                    finalOpen
+                      ? { background: 'var(--blob-purple)', color: 'white' }
+                      : { background: 'var(--muted)', color: 'var(--foreground)' }
+                  }
+                >
+                  <div className="flex items-center gap-1 lg:gap-2">
+                    <Home className="w-3 h-3 lg:w-4 lg:h-4" />
+                    <span className="hidden lg:inline">Inicio</span>
+                    <span className="lg:hidden">Inicio</span>
+                  </div>
+                </button>
+              )}
+
+              {/* Mis Stats */}
               <button
-                onClick={() => onViewChange('matches')}
+                onClick={() => onViewChange('mystats')}
                 className={`px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
-                  currentView === 'matches'
-                    ? 'scale-105'
-                    : 'hover:scale-105'
+                  currentView === 'mystats' && !finalOpen ? 'scale-105' : 'hover:scale-105'
                 }`}
                 style={
-                  currentView === 'matches'
+                  currentView === 'mystats' && !finalOpen
                     ? { background: 'var(--gradient-primary)', color: 'white' }
                     : { background: 'var(--muted)', color: 'var(--foreground)' }
                 }
               >
                 <div className="flex items-center gap-1 lg:gap-2">
-                  <Calendar className="w-3 h-3 lg:w-4 lg:h-4" />
-                  <span className="hidden lg:inline">Partidos</span>
-                  <span className="lg:hidden">Partidos</span>
+                  <BarChart3 className="w-3 h-3 lg:w-4 lg:h-4" />
+                  <span className="hidden lg:inline">Mis Stats</span>
+                  <span className="lg:hidden">Stats</span>
                 </div>
               </button>
+
+              {/* Eliminatorias */}
               <button
                 onClick={() => onViewChange('knockout')}
                 className={`relative px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
-                  currentView === 'knockout'
-                    ? 'scale-105'
-                    : 'hover:scale-105'
+                  currentView === 'knockout' && !finalOpen ? 'scale-105' : 'hover:scale-105'
                 }`}
                 style={
-                  currentView === 'knockout'
+                  currentView === 'knockout' && !finalOpen
                     ? { background: 'var(--gradient-primary)', color: 'white' }
                     : { background: 'var(--muted)', color: 'var(--foreground)' }
                 }
@@ -122,34 +157,15 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
                 </div>
                 {actuBadge}
               </button>
-              <button
-                onClick={() => onViewChange('standings')}
-                className={`px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
-                  currentView === 'standings'
-                    ? 'scale-105'
-                    : 'hover:scale-105'
-                }`}
-                style={
-                  currentView === 'standings'
-                    ? { background: 'var(--gradient-primary)', color: 'white' }
-                    : { background: 'var(--muted)', color: 'var(--foreground)' }
-                }
-              >
-                <div className="flex items-center gap-1 lg:gap-2">
-                  <Table2 className="w-3 h-3 lg:w-4 lg:h-4" />
-                  <span className="hidden lg:inline">Posiciones</span>
-                  <span className="lg:hidden">Tabla</span>
-                </div>
-              </button>
+
+              {/* Ranking */}
               <button
                 onClick={() => onViewChange('leaderboard')}
                 className={`px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl font-bold text-xs lg:text-sm transition-all shadow-sm ${
-                  currentView === 'leaderboard'
-                    ? 'scale-105'
-                    : 'hover:scale-105'
+                  currentView === 'leaderboard' && !finalOpen ? 'scale-105' : 'hover:scale-105'
                 }`}
                 style={
-                  currentView === 'leaderboard'
+                  currentView === 'leaderboard' && !finalOpen
                     ? { background: 'var(--gradient-primary)', color: 'white' }
                     : { background: 'var(--muted)', color: 'var(--foreground)' }
                 }
@@ -191,15 +207,10 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
                   </div>
                 </button>
               )}
-              
-              <div className="ml-2 pl-2 border-l-2 border-border hidden sm:flex items-center">
-                <ThemeToggle />
-              </div>
             </div>
 
-            {/* Mobile Menu Button & Theme Toggle */}
+            {/* Mobile Menu Button */}
             <div className="md:hidden flex items-center gap-2">
-              <ThemeToggle />
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="p-2 rounded-xl hover:bg-muted transition-all"
@@ -330,103 +341,66 @@ export function Layout({ children, currentView, onViewChange, leagueCode, onLogo
 
       {/* Bottom Navigation (Mobile Only) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/40 backdrop-blur-2xl border-t border-border/50 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.1)]">
-        <div className="grid grid-cols-4 gap-1 px-2 py-3">
-          <button
-            onClick={() => onViewChange('matches')}
-            className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
-            style={
-              currentView === 'matches'
-                ? { background: 'var(--blob-purple)' }
-                : {}
-            }
-          >
-            <Calendar
-              className={`w-5 h-5 transition-colors ${
-                currentView === 'matches' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            />
-            <span
-              className={`text-xs font-bold transition-colors ${
-                currentView === 'matches' ? 'text-primary' : 'text-muted-foreground'
-              }`}
+        {/* Recta final: en mobile quedan Inicio (escena Gran Final), Partidos y
+            Ranking — Elimis y Tabla salen para enfocar la experiencia. */}
+        <div className={`grid ${onOpenFinal ? 'grid-cols-3' : 'grid-cols-2'} gap-1 px-2 py-3`}>
+          {onOpenFinal && (
+            <button
+              onClick={onOpenFinal}
+              className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
+              style={finalOpen ? { background: 'var(--blob-purple)' } : {}}
             >
-              Grupos
-            </span>
-          </button>
-
-          <button
-            onClick={() => onViewChange('knockout')}
-            className="relative flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
-            style={
-              currentView === 'knockout'
-                ? { background: 'var(--blob-purple)' }
-                : {}
-            }
-          >
-            <Award
-              className={`w-5 h-5 transition-colors ${
-                currentView === 'knockout' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            />
-            <span
-              className={`text-xs font-bold transition-colors ${
-                currentView === 'knockout' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Elimis
-            </span>
-            {showActuBadge && currentView !== 'knockout' && (
-              <span className="absolute -top-1 left-1/2 -translate-x-1/2 z-10 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[8px] font-black leading-none shadow-lg shadow-rose-500/40 animate-pulse pointer-events-none whitespace-nowrap">
-                ¡Actu!
+              <Home className={`w-5 h-5 transition-colors ${finalOpen ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className={`text-xs font-bold transition-colors ${finalOpen ? 'text-primary' : 'text-muted-foreground'}`}>
+                Inicio
               </span>
-            )}
-          </button>
-
+            </button>
+          )}
           <button
-            onClick={() => onViewChange('standings')}
+            onClick={() => onViewChange('mystats')}
             className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
             style={
-              currentView === 'standings'
+              currentView === 'mystats' && !finalOpen
                 ? { background: 'var(--blob-purple)' }
                 : {}
             }
           >
-            <Table2
+            <BarChart3
               className={`w-5 h-5 transition-colors ${
-                currentView === 'standings' ? 'text-primary' : 'text-muted-foreground'
+                currentView === 'mystats' && !finalOpen ? 'text-primary' : 'text-muted-foreground'
               }`}
             />
             <span
               className={`text-xs font-bold transition-colors ${
-                currentView === 'standings' ? 'text-primary' : 'text-muted-foreground'
+                currentView === 'mystats' && !finalOpen ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              Tabla
+              Mis Stats
             </span>
           </button>
 
           <button
-                onClick={() => onViewChange('leaderboard')}
-                className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
-                style={
-                  currentView === 'leaderboard'
-                    ? { background: 'var(--blob-purple)' }
-                    : {}
-                }
-              >
-                <Trophy
-                  className={`w-5 h-5 transition-colors ${
-                    currentView === 'leaderboard' ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-                />
-                <span
-                  className={`text-xs font-bold transition-colors ${
-                    currentView === 'leaderboard' ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-                >
-                  Ranking
-                </span>
-              </button>
+            onClick={() => onViewChange('leaderboard')}
+            className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
+            style={
+              currentView === 'leaderboard'
+                ? { background: 'var(--blob-purple)' }
+                : {}
+            }
+          >
+            <Trophy
+              className={`w-5 h-5 transition-colors ${
+                currentView === 'leaderboard' ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            />
+            <span
+              className={`text-xs font-bold transition-colors ${
+                currentView === 'leaderboard' ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              Ranking
+            </span>
+          </button>
         </div>
       </nav>
     </div>

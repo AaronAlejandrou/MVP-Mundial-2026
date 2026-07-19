@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { TrendingUp, TrendingDown, Trophy, ChevronRight, Share2, Check, Users, FileText, Crown, Medal } from 'lucide-react';
-import { TermsModal } from './TermsModal';
+import { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, Trophy, ChevronRight, Users, Crown, Medal, BarChart3, History, X } from 'lucide-react';
 import { PlayerPredictionsModal } from './PlayerPredictionsModal';
+import { MyStats } from './MyStats';
+import { apiFetch } from '../../lib/api';
 
 interface LeaderboardPlayer {
   id: string;
@@ -25,18 +26,124 @@ interface LeaderboardProps {
   currentLeague?: League;
   accessToken?: string;
   knockoutTeams?: Record<number, { team1: string; team2: string }>;
+  /** Partidos enriquecidos — para calcular cuántos quedan y los pts en juego. */
+  matches?: any[];
 }
 
-export function Leaderboard({ players, currentUserId, currentLeague, accessToken, knockoutTeams }: LeaderboardProps) {
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
+/**
+ * Overlay a pantalla completa con las stats de OTRO jugador: consulta sus
+ * pronósticos bloqueados y reusa MyStats (mismo flujo de slides + resumen).
+ */
+function PlayerStatsOverlay({ player, leagueId, accessToken, players, matches, onClose }: {
+  player: LeaderboardPlayer;
+  leagueId: string;
+  accessToken: string;
+  players: LeaderboardPlayer[];
+  matches: any[];
+  onClose: () => void;
+}) {
+  const [preds, setPreds] = useState<Record<number, { goles_a: number; goles_b: number; puntos_obtenidos?: number }> | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await apiFetch(`/player-predictions/locked?userId=${player.id}&leagueId=${leagueId}`, { token: accessToken });
+        if (res.ok) {
+          const data = await res.json();
+          const rec: Record<number, any> = {};
+          (data.predictions || []).forEach((p: any) => {
+            rec[p.matchId] = { goles_a: p.goles_a, goles_b: p.goles_b, puntos_obtenidos: p.puntos_obtenidos ?? undefined };
+          });
+          if (alive) setPreds(rec);
+        } else if (alive) setPreds({});
+      } catch { if (alive) setPreds({}); }
+    })();
+    return () => { alive = false; };
+  }, [player.id, leagueId, accessToken]);
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-background overflow-y-auto">
+      <button
+        onClick={onClose}
+        aria-label="Cerrar stats"
+        className="fixed top-4 right-4 z-[80] w-10 h-10 rounded-full bg-muted/90 border border-border text-foreground flex items-center justify-center shadow-lg hover:bg-muted transition-colors"
+      >
+        <X className="w-5 h-5" />
+      </button>
+      {preds === null ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="px-4 py-16">
+          <MyStats
+            userName={player.nombre}
+            predictions={preds}
+            matches={matches}
+            leaderboard={players}
+            currentUserId={player.id}
+            leagueId={leagueId}
+            accessToken={accessToken}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Leaderboard({ players, currentUserId, currentLeague, accessToken, knockoutTeams, matches }: LeaderboardProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardPlayer | null>(null);
+  // Flujo post-final: al tocar un jugador se elige entre "Ver stats" e "Historial".
+  const [chooserPlayer, setChooserPlayer] = useState<LeaderboardPlayer | null>(null);
+  const [statsPlayer, setStatsPlayer] = useState<LeaderboardPlayer | null>(null);
   const [seenRanking, setSeenRanking] = useState(() => localStorage.getItem('polla_seen_ranking') === '1');
+  // Ceremonia de cierre: se muestra la primera vez que abres el Ranking.
+  const [showCeremony, setShowCeremony] = useState(() => !localStorage.getItem('polla_ranking_ceremony_seen'));
+  const [ceremonyClosing, setCeremonyClosing] = useState(false);
+
   const sortedPlayers = [...players].sort((a, b) => {
     if (b.puntaje_total !== a.puntaje_total) return b.puntaje_total - a.puntaje_total;
     return (b.marcadores_exactos ?? 0) - (a.marcadores_exactos ?? 0);
   });
   const entryFee = currentLeague?.id === 'b4e8efe1-6121-4b5e-a9b4-449572b79644' ? 50 : 20;
+  const poolTotal = sortedPlayers.length * entryFee;
+  const prizeFirst = Math.round(poolTotal * 0.70);
+  const prizeSecond = Math.round(poolTotal * 0.30);
+
+  // ¿La Gran Final (104) ya se jugó? Habilita el flujo post-final al tocar
+  // un jugador: elegir entre "Ver stats" e "Historial".
+  const finalDone = (matches ?? []).find((m: any) => m.id === 104)?.estado === 'finalizado';
+
+  // Confeti dorado mientras la ceremonia está abierta (3 ráfagas).
+  useEffect(() => {
+    if (!showCeremony) return;
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    (async () => {
+      const confetti = (await import('canvas-confetti')).default;
+      if (cancelled) return;
+      const colors = ['#F1D07C', '#EAC65E', '#FFFFFF', '#B487E8', '#48E5C2'];
+      [0, 650, 1400].forEach(delay => {
+        timers.push(setTimeout(() => {
+          const base = { colors, zIndex: 70, disableForReducedMotion: true, ticks: 240, scalar: 0.95 };
+          confetti({ ...base, particleCount: 70, spread: 82, startVelocity: 46, origin: { x: 0.5, y: 0.72 } });
+          confetti({ ...base, particleCount: 38, angle: 60, origin: { x: 0.02, y: 0.9 } });
+          confetti({ ...base, particleCount: 38, angle: 120, origin: { x: 0.98, y: 0.9 } });
+        }, delay));
+      });
+    })();
+    return () => { cancelled = true; timers.forEach(clearTimeout); };
+  }, [showCeremony]);
+
+  const closeCeremony = () => {
+    setCeremonyClosing(true);
+    setTimeout(() => {
+      localStorage.setItem('polla_ranking_ceremony_seen', '1');
+      setShowCeremony(false);
+      setCeremonyClosing(false);
+    }, 500);
+  };
 
   const getPositionChange = (currentPos: number, player: LeaderboardPlayer) => {
     if (!player.posicion_anterior) return null;
@@ -52,19 +159,68 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
       .slice(0, 2);
   };
 
-  const copyLink = async () => {
-    const code = currentLeague?.invitationCode || currentLeague?.codigo_invitacion;
-    if (!code) return;
-    const link = `${window.location.origin}/?invite=${code}`;
-    await navigator.clipboard.writeText(link);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
-
   return (
     <div className="relative w-full max-w-4xl mx-auto py-4 sm:py-12 px-4 sm:px-6">
 
-      {showTerms && <TermsModal onClose={() => setShowTerms(false)} entryFee={entryFee} />}
+      {/* ── Ceremonia de cierre del Mundial ── */}
+      {showCeremony && sortedPlayers.length > 0 && (
+        <div className={`rank-ceremony ${ceremonyClosing ? 'rank-ceremony-out' : ''}`}>
+          <div className="fi-aurora" aria-hidden="true" />
+          <div className="fi-dust" aria-hidden="true"><span /><span /><span /><span /><span /><span /></div>
+          <div className="relative z-10 flex flex-col items-center gap-4 px-6 text-center w-full max-w-md">
+            <div className="ms-rise flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.3em] text-white/60" style={{ animationDelay: '0s' }}>
+              <Trophy className="w-3.5 h-3.5 text-[#F1D07C]" />
+              Mundial 2026 · Cierre
+            </div>
+            <h1 className="ms-rise fi-title font-score text-5xl sm:text-6xl font-bold leading-none" style={{ animationDelay: '0.08s' }}>
+              GRACIAS<br />POR JUGAR
+            </h1>
+            <p className="ms-rise text-sm font-bold text-white/70" style={{ animationDelay: '0.2s' }}>
+              El Mundial 2026 llega a su fin
+            </p>
+            <p className="ms-rise text-lg font-black text-gradient-mundial" style={{ animationDelay: '0.28s' }}>
+              {currentLeague?.nombre || 'Tu Liga'}
+            </p>
+
+            {/* Pozo */}
+            <div className="ms-rise w-full rounded-2xl border border-[#F1D07C]/30 bg-white/5 p-4 mt-1" style={{ animationDelay: '0.4s' }}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50">Premio acumulado</p>
+              <p className="font-score text-5xl font-bold text-[#F1D07C] leading-none mt-0.5">S/ {poolTotal.toLocaleString('es-PE')}</p>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <div className="rounded-xl bg-[#F1D07C]/10 border border-[#F1D07C]/25 py-2.5 flex flex-col items-center">
+                  <Crown className="w-4 h-4 text-[#F1D07C]" fill="currentColor" fillOpacity={0.25} />
+                  <p className="font-score text-xl font-bold text-[#F1D07C] mt-0.5">S/ {prizeFirst.toLocaleString('es-PE')}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-white/50">1.er · 70%</p>
+                </div>
+                <div className="rounded-xl bg-white/8 border border-white/15 py-2.5 flex flex-col items-center">
+                  <Medal className="w-4 h-4 text-white/70" />
+                  <p className="font-score text-xl font-bold text-white/90 mt-0.5">S/ {prizeSecond.toLocaleString('es-PE')}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-white/50">2.do · 30%</p>
+                </div>
+              </div>
+            </div>
+
+
+            <button
+              onClick={closeCeremony}
+              className="ms-rise fi-next mt-2 px-7 py-2.5 rounded-full font-bold text-sm transition-transform hover:scale-105 active:scale-95"
+              style={{ animationDelay: '0.7s' }}
+            >
+              Ver la tabla final →
+            </button>
+          </div>
+
+          {/* Créditos — pegados al fondo, Sergio no se mueve, Aaron justo al medio con el navbar de forma responsive */}
+          <div className="ms-rise absolute left-0 right-0 flex justify-center pointer-events-none" 
+               style={{ bottom: 'calc(130px + env(safe-area-inset-bottom))', animationDelay: '0.55s' }}>
+            <span className="text-xs font-bold text-white/70">Sergio Torres · Carlos Trejo</span>
+          </div>
+          <div className="ms-rise absolute left-0 right-0 flex justify-center pointer-events-none" 
+               style={{ bottom: 'calc(97px + env(safe-area-inset-bottom))', animationDelay: '0.6s' }}>
+            <span className="text-xs font-bold text-white/70">Aaron</span>
+          </div>
+        </div>
+      )}
 
       {selectedPlayer && currentLeague && accessToken && (
         <PlayerPredictionsModal
@@ -77,16 +233,55 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
         />
       )}
 
+      {/* Selector post-final: Ver stats o Historial */}
+      {chooserPlayer && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-4" onClick={() => setChooserPlayer(null)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="ms-rise relative w-full max-w-sm bg-card border border-border rounded-3xl p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-center font-black text-foreground text-lg mb-1">{chooserPlayer.nombre}</p>
+            <p className="text-center text-xs font-medium text-muted-foreground mb-4">¿Qué quieres ver?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => { setStatsPlayer(chooserPlayer); setChooserPlayer(null); }}
+                className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-primary/10 border border-primary/25 text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
+              >
+                <BarChart3 className="w-5 h-5" />
+                Ver stats
+              </button>
+              <button
+                onClick={() => { setSelectedPlayer(chooserPlayer); setChooserPlayer(null); }}
+                className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-muted border border-border text-foreground font-bold text-sm hover:bg-muted/70 transition-colors"
+              >
+                <History className="w-5 h-5" />
+                Historial
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats de otro jugador (mismo flujo de Mis Stats) */}
+      {statsPlayer && currentLeague && accessToken && (
+        <PlayerStatsOverlay
+          player={statsPlayer}
+          leagueId={currentLeague.id}
+          accessToken={accessToken}
+          players={sortedPlayers}
+          matches={matches ?? []}
+          onClose={() => setStatsPlayer(null)}
+        />
+      )}
+
       {/* Main content starts directly */}
 
       {/* Cabecera minimalista y Premium */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-5 sm:mb-12 gap-3 sm:gap-6">
+      <div className="ms-rise flex flex-col sm:flex-row sm:items-end justify-between mb-5 sm:mb-12 gap-3 sm:gap-6">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1 text-primary/80">
             <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="font-bold uppercase tracking-widest text-[11px] sm:text-xs">Ranking Oficial</span>
           </div>
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter text-foreground leading-tight">
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter text-gradient-mundial leading-tight">
             {currentLeague?.nombre || "Cargando Liga..."}
           </h2>
           <div className="flex items-center gap-2 sm:gap-4 mt-2.5 sm:mt-4">
@@ -103,45 +298,6 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
             </div>
           </div>
         </div>
-        
-        {/* Botones Invitar + Bases */}
-        {(currentLeague?.invitationCode || currentLeague?.codigo_invitacion) && (
-          <div className="flex-shrink-0 w-full sm:w-auto flex flex-col gap-2 items-stretch sm:items-end">
-            {/* En móvil los dos botones van horizontales (lado a lado); en desktop apilados. */}
-            <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
-              <button
-                onClick={() => setShowTerms(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:scale-105 border border-border/60"
-              >
-                <FileText className="w-4 h-4 flex-shrink-0" />
-                Ver Bases
-              </button>
-              <button
-                onClick={copyLink}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-sm ${
-                  copiedLink
-                    ? 'bg-emerald-500 text-white shadow-emerald-500/20 scale-105'
-                    : 'bg-primary text-primary-foreground hover:scale-105 hover:shadow-primary/20 shadow-lg'
-                }`}
-              >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-4 h-4 flex-shrink-0" />
-                    ¡Copiado!
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-4 h-4 flex-shrink-0" />
-                    Invitar<span className="hidden sm:inline">&nbsp;Amigos</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <span className="text-xs text-muted-foreground font-medium text-center sm:text-right sm:mr-1">
-              Código: <span className="font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded-md border border-border">{currentLeague.invitationCode || currentLeague.codigo_invitacion}</span>
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Premio acumulado */}
@@ -150,7 +306,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
         const first = Math.round(pool * 0.70);
         const second = Math.round(pool * 0.30);
         return (
-          <div className="mb-4 sm:mb-8 relative overflow-hidden rounded-2xl border border-amber-500/25 bg-card/80 dark:bg-gradient-to-r dark:from-amber-500/8 dark:via-card/60 dark:to-primary/8 backdrop-blur-xl p-3.5 sm:p-5 shadow-[0_4px_24px_rgba(245,158,11,0.08)]">
+          <div className="ms-rise mb-4 sm:mb-8 relative overflow-hidden rounded-2xl border border-amber-500/25 bg-card/80 dark:bg-gradient-to-r dark:from-amber-500/8 dark:via-card/60 dark:to-primary/8 backdrop-blur-xl p-3.5 sm:p-5 shadow-[0_4px_24px_rgba(245,158,11,0.08)]" style={{ animationDelay: '0.08s' }}>
             <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
               {/* Izquierda: total */}
               <div className="flex flex-col justify-center min-w-0">
@@ -219,8 +375,13 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
             return (
               <div
                 key={player.id}
-                onClick={() => { setSelectedPlayer(player); if (!seenRanking) { localStorage.setItem('polla_seen_ranking', '1'); setSeenRanking(true); } }}
-                className={`group relative flex items-center p-4 sm:p-5 transition-all duration-500 ease-out rounded-3xl cursor-pointer ${
+                style={{ animationDelay: `${Math.min(index * 0.06, 0.6)}s` }}
+                onClick={() => {
+                  if (finalDone) setChooserPlayer(player);
+                  else setSelectedPlayer(player);
+                  if (!seenRanking) { localStorage.setItem('polla_seen_ranking', '1'); setSeenRanking(true); }
+                }}
+                className={`ms-rise group relative flex items-center p-4 sm:p-5 transition-all duration-500 ease-out rounded-3xl cursor-pointer ${
                   isTop1
                     ? 'rank-card-gold bg-gradient-to-br from-amber-500/15 via-card/70 to-amber-400/5 backdrop-blur-2xl border-2 border-amber-400/40 hover:-translate-y-0.5 hover:scale-[1.015] z-10'
                     : isTop2
