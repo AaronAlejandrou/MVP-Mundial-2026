@@ -126,7 +126,7 @@ export function Leaderboard({ players, currentUserId, currentLeague, accessToken
       const colors = ['#F1D07C', '#EAC65E', '#FFFFFF', '#B487E8', '#48E5C2'];
       [0, 650, 1400].forEach(delay => {
         timers.push(setTimeout(() => {
-          const base = { colors, zIndex: 70, disableForReducedMotion: true, ticks: 240, scalar: 0.95 };
+          const base = { colors, useWorker: false, disableForReducedMotion: true, zIndex: 70, ticks: 240, scalar: 0.95 };
           confetti({ ...base, particleCount: 70, spread: 82, startVelocity: 46, origin: { x: 0.5, y: 0.72 } });
           confetti({ ...base, particleCount: 38, angle: 60, origin: { x: 0.02, y: 0.9 } });
           confetti({ ...base, particleCount: 38, angle: 120, origin: { x: 0.98, y: 0.9 } });

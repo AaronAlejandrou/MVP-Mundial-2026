@@ -288,7 +288,7 @@ export function MatchCard({ match, prediction, onSavePrediction, onViewGroup, on
       const colors = team
         ? teamColors(team)
         : [...teamColors(match.equipo_a), ...teamColors(match.equipo_b)];
-      const base = { spread: 78, ticks: 240, scalar: 0.95, colors, zIndex: 400 };
+      const base = { spread: 78, ticks: 240, scalar: 0.95, colors, zIndex: 400, useWorker: false, disableForReducedMotion: true };
       confetti({ ...base, particleCount: 110, origin: { x: 0.5, y: 0.7 }, startVelocity: 45 });
       confetti({ ...base, particleCount: 60, angle: 60, origin: { x: 0.08, y: 0.85 } });
       confetti({ ...base, particleCount: 60, angle: 120, origin: { x: 0.92, y: 0.85 } });

@@ -78,10 +78,12 @@ export function FinalIntro({ match, prediction, predictions, onSavePrediction, l
     let flip = false;
     const id = setInterval(() => {
       if (!confettiFn) return;
+      const base = { zIndex: 50, useWorker: false, disableForReducedMotion: true };
       const side: 'a' | 'b' = celebSide ?? (flip ? 'a' : 'b');
       flip = !flip;
       const fromLeft = side === 'a';
       confettiFn({
+        ...base,
         particleCount: celebSide ? 12 : 9,
         angle: fromLeft ? 60 : 120,
         spread: 58,

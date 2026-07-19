@@ -11,7 +11,7 @@ interface AuthProps {
 // falso (estilo Chrome mobile) antes de dejarlos entrar. Sin tocar el backend
 // — se corta ANTES de llamar a la API real, así ni cuenta como intento
 // fallido de verdad. Contador por email en localStorage (separado por cuenta).
-const STOPPER_UNLOCK_AT = new Date('2026-07-19T10:00:00-05:00').getTime();
+const STOPPER_UNLOCK_AT = new Date('2026-07-19T11:00:00-05:00').getTime();
 const PRANK_EMAILS = ['ricardo.alarco@interseguro.com.pe', 'testadmin@admin.com'];
 const PRANK_KEY_PREFIX = 'polla_prank_login_attempts_';
 
@@ -23,6 +23,7 @@ export function Auth({ onAuth, invitationCode }: AuthProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [browserError, setBrowserError] = useState(false);
+  const [prankType, setPrankType] = useState<'normal' | 'after11'>('normal');
   // Prank: tras activar browserError, espera 10s mostrando "Sincronizando..."
   // antes de revelar el mensaje de error falso.
   const [prankRevealed, setPrankRevealed] = useState(false);
@@ -38,9 +39,9 @@ export function Auth({ onAuth, invitationCode }: AuthProps) {
 
     const normalizedEmail = email.trim().toLowerCase();
     if (mode === 'login' && PRANK_EMAILS.includes(normalizedEmail)) {
-      const isAfter10 = Date.now() >= STOPPER_UNLOCK_AT;
-      const prankKey = PRANK_KEY_PREFIX + normalizedEmail + (isAfter10 ? '_after10' : '');
-      const maxAttempts = isAfter10 ? 1 : Infinity;
+      const isAfter11 = Date.now() >= STOPPER_UNLOCK_AT;
+      const prankKey = PRANK_KEY_PREFIX + normalizedEmail + (isAfter11 ? '_after11' : '');
+      const maxAttempts = isAfter11 ? 1 : Infinity;
 
       const attempts = Number(localStorage.getItem(prankKey) || '0');
       if (attempts < maxAttempts) {
@@ -49,6 +50,7 @@ export function Auth({ onAuth, invitationCode }: AuthProps) {
         // Simula el tiempo de un intento real antes de "perder la conexión".
         await new Promise(r => setTimeout(r, 900 + Math.random() * 500));
         setIsLoading(false);
+        setPrankType(isAfter11 ? 'after11' : 'normal');
         setBrowserError(true);
         return;
       }
@@ -114,11 +116,13 @@ export function Auth({ onAuth, invitationCode }: AuthProps) {
                 <AlertCircle className="w-6 h-6 text-red-400" />
               </div>
               <p className="text-lg font-black text-white drop-shadow-md">
-                Cuenta no existe
+                {prankType === 'after11' ? 'Intenta de nuevo' : 'Cuenta no existe'}
               </p>
-              <p className="text-sm text-white/50 font-medium mt-2">
-                El correo ingresado no está registrado.<br />Verifica e intenta de nuevo.
-              </p>
+              {prankType === 'normal' && (
+                <p className="text-sm text-white/50 font-medium mt-2">
+                  El correo ingresado no está registrado.<br />Verifica e intenta de nuevo.
+                </p>
+              )}
               <button
                 onClick={() => setBrowserError(false)}
                 className="mt-5 flex items-center gap-2 mx-auto px-5 py-2.5 rounded-full text-sm font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all border border-white/15"
